@@ -1,0 +1,2893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>艾瑟洛斯：星陨大灾变 — DND5E 单页跑团</title>
+<!-- Phaser3 地图渲染、探索、战斗 -->
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<!-- Tailwind CSS 羊皮纸UI -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Howler.js 音效BGM -->
+<script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+<!-- Tween.js 动画 -->
+<script src="https://cdn.jsdelivr.net/npm/@tweenjs/tween.js@18.6.4/dist/tween.umd.js"></script>
+<script>
+tailwind.config = {
+  theme: { extend: { colors: {
+    parch: {50:'#f7eed6',100:'#f0e2bd',200:'#e4cf99',300:'#d3b476',400:'#bd9754',600:'#7a5c33',700:'#5d452a',800:'#3e2e1c',900:'#241a0f'},
+    ink:'#3a2b16', blood:'#8a2f1d', arc:'#4a3a7a', sage:'#3f5d33'
+  }}}};
+</script>
+<style>
+  html,body{height:100%;margin:0;}
+  body{font-family:Georgia,'Noto Serif SC','Songti SC','SimSun',serif;}
+  .parchment{background:
+    radial-gradient(ellipse at 20% 10%, rgba(120,90,40,.08), transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(120,90,40,.10), transparent 50%),
+    linear-gradient(160deg,#f0e2bd 0%,#e8d5a8 45%,#dcc390 100%);
+    box-shadow: inset 0 0 40px rgba(90,60,20,.25);}
+  .parch-dark{background:linear-gradient(160deg,#3e2e1c,#241a0f);}
+  .btn{border:2px solid #5d452a; background:linear-gradient(180deg,#f0e2bd,#dcc390); color:#3a2b16;
+    padding:4px 10px; border-radius:6px; font-size:13px; cursor:pointer; box-shadow:0 2px 0 #5d452a66; transition:all .12s;}
+  .btn:hover{filter:brightness(1.07); transform:translateY(-1px);}
+  .btn:active{transform:translateY(1px); box-shadow:none;}
+  .btn:disabled{opacity:.45; cursor:not-allowed; transform:none;}
+  .btn-red{background:linear-gradient(180deg,#c46a4a,#9a4022); color:#fff7e8; border-color:#5d2013;}
+  .btn-blue{background:linear-gradient(180deg,#7a6fd0,#4a3a7a); color:#fff7e8; border-color:#2c2050;}
+  .btn-green{background:linear-gradient(180deg,#6a9a4a,#3f5d33); color:#fff7e8; border-color:#243a1c;}
+  .card{border:2px solid #7a5c33; border-radius:8px; background:rgba(255,250,235,.55); padding:8px;}
+  .card.sel{border-color:#8a2f1d; box-shadow:0 0 0 2px #8a2f1d55; background:rgba(255,240,200,.8);}
+  .logline{margin:2px 0; padding:3px 6px; border-left:3px solid #7a5c33; background:rgba(255,252,240,.4); font-size:13px; line-height:1.55;}
+  .log-roll{border-color:#4a3a7a; color:#37286b;}
+  .log-combat{border-color:#8a2f1d; color:#6d2314;}
+  .log-gain{border-color:#3f5d33; color:#2c4a22;}
+  .log-sys{border-color:#7a5c33; color:#5d452a; font-style:italic;}
+  .log-quest{border-color:#b08a2a; color:#7a5c10; font-weight:bold;}
+  .dlg-text{font-size:14px; line-height:1.8;}
+  canvas{image-rendering:pixelated;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:#e4cf99;}
+  ::-webkit-scrollbar-thumb{background:#7a5c33;border-radius:5px;}
+  .tabbtn{flex:1; text-align:center; padding:6px 2px; font-size:13px; cursor:pointer; border-bottom:3px solid transparent; color:#5d452a;}
+  .tabbtn.on{border-bottom-color:#8a2f1d; color:#8a2f1d; font-weight:bold; background:rgba(255,250,235,.5);}
+  .hpbar{height:10px; background:#5a2a1a; border-radius:4px; overflow:hidden; border:1px solid #3a2b16;}
+  .hpbar>div{height:100%; background:linear-gradient(90deg,#7fae54,#4c7a2e);}
+  .rollpop{animation:rollshake .5s;}
+  @keyframes rollshake{0%{transform:scale(.4) rotate(-12deg);opacity:0}60%{transform:scale(1.15) rotate(4deg)}100%{transform:scale(1) rotate(0)}}
+  .fadein{animation:fadein .35s;}
+  @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .banner{animation:banner 2.6s forwards;}
+  @keyframes banner{0%{opacity:0;transform:translate(-50%,-8px)}12%{opacity:1;transform:translate(-50%,0)}80%{opacity:1}100%{opacity:0}}
+  .title-glow{text-shadow:0 0 18px #d3b476, 0 2px 0 #5d452a;}
+  input,select{font-family:inherit;}
+</style>
+</head>
+<body class="overflow-hidden bg-parch-900">
+
+<!-- ============ 游戏主界面 ============ -->
+<div id="gameUI" class="hidden h-screen w-screen flex-col">
+  <header class="parch-dark text-parch-100 flex items-center gap-3 px-3 py-1.5 text-sm border-b-4 border-parch-700 flex-none">
+    <div class="font-bold text-parch-200 tracking-widest mr-2">艾瑟洛斯<span class="text-parch-400 text-xs ml-1">星陨大灾变</span></div>
+    <div id="tbPlane" class="px-2 py-0.5 rounded bg-parch-800 border border-parch-600">主物质位面</div>
+    <div id="tbTime" class="text-parch-300">第1天 · 清晨</div>
+    <div id="tbWeather" class="text-parch-300">晴</div>
+    <div class="flex items-center gap-1 min-w-[130px]">
+      <span class="text-parch-400">HP</span>
+      <div class="hpbar w-24"><div id="tbHP" style="width:100%"></div></div>
+      <span id="tbHPn" class="text-parch-200 text-xs"></span>
+    </div>
+    <div class="text-parch-300">AC <span id="tbAC" class="text-parch-100 font-bold">10</span></div>
+    <div class="text-parch-300">金币 <span id="tbGold" class="text-yellow-200 font-bold">0</span></div>
+    <div class="text-parch-300">星核 <span id="tbShard" class="text-arc font-bold">0</span>/4</div>
+    <div class="ml-auto flex gap-1.5">
+      <button class="btn" id="btnHere">查看此地</button>
+      <button class="btn" id="btnRest">休息</button>
+      <button class="btn" id="btnQSave">存档</button>
+      <button class="btn" id="btnSnd">音效:开</button>
+      <button class="btn" id="btnHelp">帮助</button>
+    </div>
+  </header>
+  <div class="flex-1 flex min-h-0">
+    <!-- 左：羊皮纸叙事面板 -->
+    <aside class="w-[420px] flex-none parchment flex flex-col border-r-4 border-parch-700">
+      <nav id="tabs" class="flex border-b-2 border-parch-600 flex-none">
+        <div class="tabbtn on" data-tab="story">故事</div>
+        <div class="tabbtn" data-tab="char">角色</div>
+        <div class="tabbtn" data-tab="inv">背包</div>
+        <div class="tabbtn" data-tab="spell">法术书</div>
+        <div class="tabbtn" data-tab="quest">任务</div>
+        <div class="tabbtn" data-tab="sys">系统</div>
+      </nav>
+      <div id="tabContent" class="flex-1 overflow-y-auto p-3"></div>
+    </aside>
+    <!-- 右：Phaser3 画布 -->
+    <main class="flex-1 relative min-w-0 bg-black">
+      <div id="phaserHost" class="absolute inset-0"></div>
+      <div id="locBanner" class="absolute top-3 left-1/2 hidden px-5 py-2 parchment border-2 border-parch-700 rounded-lg text-lg font-bold text-ink" style="transform:translateX(-50%)"></div>
+      <div id="combatBar" class="absolute bottom-0 inset-x-0 hidden parchment border-t-4 border-parch-700 px-3 py-2"></div>
+    </main>
+  </div>
+</div>
+
+<!-- ============ 标题界面 ============ -->
+<div id="titleScreen" class="absolute inset-0 z-50 parch-dark flex items-center justify-center">
+  <div class="text-center parchment px-14 py-10 rounded-2xl border-4 border-parch-700 max-w-xl">
+    <div class="text-xs tracking-[.5em] text-parch-600 mb-2">DND 5E · 单页跑团</div>
+    <h1 class="text-4xl font-bold text-ink title-glow mb-1">艾瑟洛斯</h1>
+    <div class="text-lg text-blood font-bold mb-4 tracking-widest">—— 星陨大灾变 ——</div>
+    <p class="text-sm text-parch-700 leading-relaxed mb-6">一颗星辰坠入艾瑟洛斯，位面壁垒寸寸崩裂。<br>星辉教会、灰烬兄弟会、幽影议会、自由商盟各怀心思。<br>拾起四枚星核碎片，在裂隙吞噬一切之前，写下你的结局。</p>
+    <div class="flex flex-col gap-2 items-stretch">
+      <button class="btn text-lg py-2" id="btnNew">✦ 新的冒险</button>
+      <button class="btn text-lg py-2 hidden" id="btnContinue">继续冒险（读取存档）</button>
+      <button class="btn" id="btnHelpT">玩法说明</button>
+    </div>
+    <div class="text-xs text-parch-600 mt-4">方向键 / WASD 移动 · 点击相邻格移动 · 鼠标全流程可用</div>
+  </div>
+</div>
+
+<!-- ============ 创建角色 ============ -->
+<div id="createScreen" class="absolute inset-0 z-50 hidden parch-dark overflow-y-auto">
+  <div class="max-w-3xl mx-auto my-6 parchment rounded-2xl border-4 border-parch-700 p-6">
+    <h2 class="text-2xl font-bold text-ink text-center mb-1">创造你的冒险者</h2>
+    <p class="text-center text-xs text-parch-600 mb-4">属性采用 4d6 去最低（DND 5E 标准），按职业优先级自动分配</p>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="text-sm font-bold text-ink">姓名</label>
+        <input id="inpName" class="w-full card mt-1 text-sm" placeholder="输入名字…" value="">
+      </div>
+      <div>
+        <label class="text-sm font-bold text-ink">背景</label>
+        <div id="bgRow" class="flex gap-1 mt-1"></div>
+      </div>
+    </div>
+    <div class="mt-3">
+      <label class="text-sm font-bold text-ink">种族</label>
+      <div id="raceRow" class="grid grid-cols-3 gap-2 mt-1"></div>
+    </div>
+    <div class="mt-3">
+      <label class="text-sm font-bold text-ink">职业</label>
+      <div id="clsRow" class="grid grid-cols-3 gap-2 mt-1"></div>
+    </div>
+    <div class="mt-3 flex items-center gap-3">
+      <label class="text-sm font-bold text-ink flex-none">属性值</label>
+      <div id="statBox" class="flex gap-1 flex-wrap text-xs"></div>
+      <button class="btn flex-none" id="btnRoll">重掷属性</button>
+    </div>
+    <div id="createSummary" class="mt-3 text-xs text-parch-700 leading-relaxed min-h-[40px] card"></div>
+    <div class="flex justify-between mt-4">
+      <button class="btn" id="btnBackT">返回标题</button>
+      <button class="btn btn-red text-lg px-8" id="btnStart">进入艾瑟洛斯</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 结局画面 ============ -->
+<div id="endingScreen" class="absolute inset-0 z-[60] hidden parch-dark overflow-y-auto">
+  <div class="max-w-2xl mx-auto my-10 parchment rounded-2xl border-4 border-parch-700 p-8">
+    <div class="text-xs tracking-[.4em] text-parch-600 text-center">THE END</div>
+    <h2 id="endTitle" class="text-3xl font-bold text-ink text-center my-3 title-glow"></h2>
+    <div id="endText" class="text-sm leading-loose text-parch-800 my-4"></div>
+    <div id="endStats" class="text-xs text-parch-700 card my-4 leading-relaxed"></div>
+    <div class="text-center"><button class="btn btn-red px-10 py-2 text-lg" id="btnRestart">重启多元宇宙</button></div>
+  </div>
+</div>
+
+<!-- ============ 通用弹窗 / 骰子 / 提示 ============ -->
+<div id="modalHost" class="absolute inset-0 z-40 hidden bg-black/60 flex items-center justify-center">
+  <div id="modalBox" class="parchment rounded-xl border-4 border-parch-700 max-w-lg w-[92%] max-h-[85vh] overflow-y-auto p-5 fadein"></div>
+</div>
+<div id="dicePop" class="absolute z-50 hidden top-1/3 left-1/2 pointer-events-none" style="transform:translate(-50%,-50%)">
+  <div class="parchment rounded-2xl border-4 border-arc px-10 py-6 text-center rollpop">
+    <div id="diceLabel" class="text-sm text-arc font-bold"></div>
+    <div id="diceVal" class="text-5xl font-bold text-ink my-1"></div>
+    <div id="diceDetail" class="text-xs text-parch-600"></div>
+  </div>
+</div>
+<div id="toast" class="absolute z-50 hidden top-16 left-1/2 px-4 py-2 rounded bg-ink text-parch-100 text-sm" style="transform:translateX(-50%)"></div>
+
+<script>
+'use strict';
+/* =====================================================
+   艾瑟洛斯：星陨大灾变
+   Phaser3 像素地图 + 纯文字跑团叙事 · DND5E 规则引擎
+   单文件实现（SRD规则引擎内置于本文件，等价 bag-of-holding）
+===================================================== */
+
+/* ---------------- 工具与随机 ---------------- */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const R={
+  ri:(a,b)=>a+Math.floor(Math.random()*(b-a+1)),
+  d:s=>R.ri(1,s),
+  chance:p=>Math.random()<p,
+  pick:a=>a[Math.floor(Math.random()*a.length)],
+  shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;},
+  roll(expr){ // '2d6+3'
+    const m=/^(\d*)d(\d+)([+-]\d+)?$/.exec(expr);
+    if(!m)return parseInt(expr)||0;
+    const n=m[1]?parseInt(m[1]):1,s=parseInt(m[2]),b=m[3]?parseInt(m[3]):0;
+    let t=0;for(let i=0;i<n;i++)t+=R.d(s);return t+b;
+  },
+  rollD20(mod,adv){ // adv: 1优势 -1劣势 0正常
+    const a=R.d(20),b=R.d(20);
+    let use=a,other=null;
+    if(adv>0){use=Math.max(a,b);other=Math.min(a,b);}
+    else if(adv<0){use=Math.min(a,b);other=Math.max(a,b);}
+    return {nat:use,other,total:use+mod,crit:use===20,fail:use===1};
+  }
+};
+
+/* ---------------- 音效（Howler.ctx 合成，无外部音频文件） ---------------- */
+const SFX=(()=>{
+  let ctx=null,bgmNodes=null;
+  function ensure(){
+    if(ctx)return ctx;
+    try{
+      if(window.Howl&&Howler.ctx)ctx=Howler.ctx;
+      else if(window.AudioContext)ctx=new AudioContext();
+    }catch(e){}
+    return ctx;
+  }
+  function tone(f,dur,type,vol,slide){
+    const c=ensure();if(!c)return;
+    try{
+      if(c.state==='suspended')c.resume();
+      const o=c.createOscillator(),g=c.createGain();
+      o.type=type||'square';o.frequency.value=f;
+      if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),c.currentTime+dur);
+      g.gain.setValueAtTime(vol||.08,c.currentTime);
+      g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+dur);
+      o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+dur);
+    }catch(e){}
+  }
+  function seq(list){let t=0;list.forEach(x=>{setTimeout(()=>tone(x[0],x[1],x[2],x[3]),t*1000);t+=x[1]*.8;});}
+  return {
+    play(name){
+      if(!G||!G.settings.sound)return;
+      switch(name){
+        case 'click':tone(660,.06,'square',.05);break;
+        case 'dice':seq([[440,.05],[520,.05],[600,.05],[720,.12]]);break;
+        case 'hit':seq([[300,.08,'sawtooth',.09],[180,.12,'sawtooth',.09]]);break;
+        case 'crit':seq([[520,.07,'square',.1],[660,.07,'square',.1],[880,.15,'square',.1]]);break;
+        case 'heal':seq([[520,.1,'sine',.09],[660,.1,'sine',.09],[880,.2,'sine',.09]]);break;
+        case 'spell':seq([[880,.08,'sine',.08],[1200,.15,'sine',.08]]);break;
+        case 'coin':seq([[980,.06,'square',.07],[1320,.1,'square',.07]]);break;
+        case 'level':seq([[440,.1,'sine',.1],[550,.1,'sine',.1],[660,.1,'sine',.1],[880,.3,'sine',.1]]);break;
+        case 'death':seq([[300,.2,'sawtooth',.1],[220,.2,'sawtooth',.1],[140,.4,'sawtooth',.1]]);break;
+        case 'open':tone(520,.08,'triangle',.07);break;
+        case 'quest':seq([[660,.08,'triangle',.08],[880,.2,'triangle',.08]]);break;
+        case 'move':tone(220,.03,'triangle',.03);break;
+      }
+    },
+    bgm(on){
+      const c=ensure();if(!c)return;
+      if(on&&!bgmNodes){
+        try{
+          if(c.state==='suspended')c.resume();
+          const g=c.createGain();g.gain.value=.025;g.connect(c.destination);
+          const o1=c.createOscillator(),o2=c.createOscillator();
+          o1.type='sine';o1.frequency.value=110;o2.type='sine';o2.frequency.value=164.8;
+          const lfo=c.createOscillator(),lg=c.createGain();
+          lfo.frequency.value=.08;lg.gain.value=.012;
+          lfo.connect(lg);lg.connect(g.gain);
+          o1.connect(g);o2.connect(g);o1.start();o2.start();lfo.start();
+          bgmNodes={g,o1,o2,lfo};
+        }catch(e){}
+      }else if(!on&&bgmNodes){
+        try{bgmNodes.o1.stop();bgmNodes.o2.stop();bgmNodes.lfo.stop();bgmNodes.g.disconnect();}catch(e){}
+        bgmNodes=null;
+      }
+    }
+  };
+})();
+
+/* =====================================================
+   DND 5E SRD 数据（数值校验基准）
+===================================================== */
+const ABILS=['str','dex','con','int','wis','cha'];
+const ABILN={str:'力量',dex:'敏捷',con:'体质',int:'智力',wis:'感知',cha:'魅力'};
+const SKILLS={运动:'str',杂技:'dex',巧手:'dex',隐匿:'dex',奥秘:'int',历史:'int',调查:'int',自然:'int',宗教:'int',察觉:'wis',生存:'wis',医药:'wis',驯兽:'wis',洞悉:'wis',欺瞒:'cha',威吓:'cha',表演:'cha',游说:'cha'};
+const XP_TABLE=[0,0,300,900,2700,6500,14000,23000,34000,48000,64000]; // 索引=等级
+const MON_XP={0.125:25,0.25:50,0.5:100,1:200,2:450,3:700,5:1800,7:2900,9:5000,12:8400};
+
+const RACES={
+  human:{n:'人类',asi:{str:1,dex:1,con:1},trait:'适应力强：全属性+1，额外获得1项背景技能。',dark:0},
+  elf:{n:'精灵',asi:{dex:2,int:1},trait:'黑暗视觉60尺；察觉熟练；魅惑豁免优势。',dark:6,skill:'察觉'},
+  dwarf:{n:'矮人',asi:{con:2,str:1},trait:'黑暗视觉60尺；毒素豁免优势；对毒素伤害抗性。',dark:6},
+  halfling:{n:'半身人',asi:{dex:2,cha:1},trait:'幸运：攻击/属性/豁免掷出1可重掷一次；勇敢。',dark:0,lucky:1},
+  dragonborn:{n:'龙裔',asi:{str:2,cha:1},trait:'龙息武器：2格锥形喷吐（短休恢复），火焰伤害抗性。',dark:0,breath:1,fireres:1},
+  tiefling:{n:'提夫林',asi:{cha:2,int:1},trait:'黑暗视觉60尺；火焰伤害抗性；奥秘熟练。',dark:6,skill:'奥秘',fireres:1},
+};
+const BGS={
+  acolyte:{n:'侍僧',skills:['医药','宗教'],fav:'church',txt:'你曾在星辉修道院的烛火下抄写圣典。'},
+  criminal:{n:'罪犯',skills:['欺瞒','隐匿'],fav:'shadow',txt:'你了解灰色地带的规则，幽影议会对你青眼有加。'},
+  folkhero:{n:'民间英雄',skills:['生存','驯兽'],fav:'trade',txt:'乡民传颂你的事迹，商路上的旅店愿意赊账给你。'},
+  sage:{n:'学者',skills:['奥秘','历史'],fav:null,txt:'你毕生研究位面星象，开场额外获得一卷魔法卷轴。'},
+};
+const CLASSES={
+  fighter:{n:'战士',hd:10,saves:['str','con'],pool:['运动','威吓','察觉','生存','洞悉'],nskill:2,
+    prio:['str','con','dex','wis','cha','int'],casting:null,
+    gear:[['longsword',1],['chainshirt',1],['shield',1]],
+    feat:'回气（附赠动作恢复1d10+等级HP，短休一次）',color:'#8a4030'},
+  wizard:{n:'法师',hd:6,saves:['int','wis'],pool:['奥秘','历史','调查'],nskill:2,
+    prio:['int','dex','con','wis','cha','str'],casting:'int',
+    gear:[['quarterstaff',1],['potion_heal',1]],
+    feat:'奥术掌控：法术豁免DC=8+熟练+智力调整',color:'#4a3a8a',
+    spells:['firebolt','rayfrost','magicmissile','shield','invisibility','scorchingray','fireball','lightningbolt','icestorm','coneofcold']},
+  rogue:{n:'游荡者',hd:8,saves:['dex','int'],pool:['巧手','隐匿','察觉','欺瞒','洞悉','杂技'],nskill:3,
+    prio:['dex','int','con','cha','wis','str'],casting:null,
+    gear:[['shortsword',1],['shortbow',1],['leather',1],['dagger',2]],
+    feat:'偷袭：优势时附加 1d6/每2等级 精准伤害；灵巧动作',color:'#555577'},
+  cleric:{n:'牧师',hd:8,saves:['wis','cha'],pool:['医药','宗教','洞悉','游说'],nskill:2,
+    prio:['wis','con','str','cha','dex','int'],casting:'wis',
+    gear:[['mace',1],['chainshirt',1],['shield',1]],
+    feat:'圣疗：动作恢复生命池（3x等级，长休恢复）',color:'#8a7030',
+    spells:['sacredflame','healingword','curewounds','lesserest','blightward','flamestrike']},
+  ranger:{n:'游侠',hd:10,saves:['str','dex'],pool:['生存','察觉','隐匿','驯兽','自然'],nskill:3,
+    prio:['dex','wis','con','str','cha','int'],casting:'wis',castingHalf:true,
+    gear:[['shortbow',1],['shortsword',1],['leather',1]],
+    feat:'荒野直觉：野外随机遭遇概率降低；猎人印记',color:'#3f6d33',
+    spells:['curewounds','huntersmark','lesserest','windblade']},
+  paladin:{n:'圣武士',hd:10,saves:['wis','cha'],pool:['运动','威吓','宗教','洞悉','游说'],nskill:2,
+    prio:['str','cha','con','wis','int','dex'],casting:'cha',castingHalf:true,
+    gear:[['longsword',1],['chainshirt',1],['shield',1]],
+    feat:'神圣斩击：消耗1环法术位，命中后额外+2d8光耀伤害',color:'#9a7a3a',
+    spells:['curewounds','lesserest','wrathfulsmite']},
+};
+
+/* 法术（SRD数值） */
+const SPELLS={
+  firebolt:{n:'火焰箭',lvl:0,dmg:'1d10',type:'火焰',rng:12,atk:1,cls:['wizard'],scal:'cantrip'},
+  rayfrost:{n:'冷冻射线',lvl:0,dmg:'1d8',type:'冷冻',rng:12,atk:1,cls:['wizard']},
+  sacredflame:{n:'圣火',lvl:0,dmg:'1d8',type:'光耀',rng:12,save:'dex',cls:['cleric'],scal:'cantrip'},
+  magicmissile:{n:'魔法飞弹',lvl:1,dmg:'3d4+3',type:'力场',rng:12,auto:1,cls:['wizard']},
+  healingword:{n:'治疗真言',lvl:1,heal:'1d4',rng:6,cls:['cleric']},
+  curewounds:{n:'治愈术',lvl:1,heal:'1d8',touch:1,cls:['cleric','paladin','ranger']},
+  shield:{n:'护盾术',lvl:1,self:1,ac:5,dur:1,cls:['wizard']},
+  huntersmark:{n:'猎人印记',lvl:1,self:1,mark:1,dur:99,cls:['ranger']},
+  wrathfulsmite:{n:'慑人挥砍',lvl:1,save:'wis',dmg:'1d6',type:'心灵',rng:1,cls:['paladin']},
+  invisibility:{n:'隐形术',lvl:2,self:1,invis:1,dur:99,cls:['wizard']},
+  lesserest:{n:'次级复原术',lvl:2,rest:1,cls:['cleric','paladin','ranger']},
+  scorchingray:{n:'灼热射线',lvl:2,dmg:'2d6',type:'火焰',rng:12,atk:1,rays:3,cls:['wizard']},
+  blightward:{n:'枯萎守誓',lvl:2,save:'con',dmg:'4d6',type:'黯蚀',rng:6,cls:['cleric']},
+  fireball:{n:'火球术',lvl:3,dmg:'8d6',type:'火焰',rng:10,save:'dex',half:1,area:1,cls:['wizard']},
+  lightningbolt:{n:'闪电束',lvl:3,dmg:'8d6',type:'闪电',rng:6,save:'dex',half:1,line:1,cls:['wizard']},
+  windblade:{n:'风刃连斩',lvl:3,dmg:'3d8',type:'挥砍',rng:10,atk:1,cls:['ranger']},
+  icestorm:{n:'冰风暴',lvl:4,dmg:'2d10+4d6',type:'冰霜',rng:12,save:'dex',half:1,area:1,cls:['wizard']},
+  flamestrike:{n:'焰击术',lvl:5,dmg:'8d6',type:'火焰',rng:12,save:'dex',half:1,area:1,cls:['cleric']},
+  coneofcold:{n:'寒冰锥',lvl:5,dmg:'8d8',type:'冷冻',rng:1,save:'con',half:1,cone:1,cls:['wizard']},
+};
+const SLOT_FULL={1:[2],2:[3],3:[4,2],4:[4,3],5:[4,3,2],6:[4,3,3],7:[4,3,3,1],8:[4,3,3,2],9:[4,3,3,3,1],10:[4,3,3,3,2]};
+const SLOT_HALF={1:[],2:[2],3:[3],4:[3],5:[4,2],6:[4,2],7:[4,3],8:[4,3],9:[4,3,1],10:[4,3,2]};
+
+/* 物品 */
+const ITEMS={
+  dagger:{n:'匕首',type:'weapon',dmg:'1d4',fin:1,rng:1,price:2,w:1},
+  shortsword:{n:'短剑',type:'weapon',dmg:'1d6',fin:1,rng:1,price:10},
+  longsword:{n:'长剑',type:'weapon',dmg:'1d8',rng:1,price:15},
+  mace:{n:'硬头锤',type:'weapon',dmg:'1d6',rng:1,price:5},
+  quarterstaff:{n:'木杖',type:'weapon',dmg:'1d6',rng:1,price:2},
+  battleaxe:{n:'战斧',type:'weapon',dmg:'1d8',rng:1,price:10},
+  greataxe:{n:'巨斧',type:'weapon',dmg:'1d12',rng:1,price:30,two:1},
+  greatsword:{n:'巨剑',type:'weapon',dmg:'2d6',rng:1,price:50,two:1},
+  frostbrand:{n:'霜牙长弓',type:'weapon',dmg:'1d8+1',rng:8,ranged:1,price:220,magic:1,desc:'附魔武器，附带1点冰霜伤害'},
+  starblade:{n:'星辉长剑',type:'weapon',dmg:'1d8+1',rng:1,price:300,magic:1,desc:'星铁锻造，命中时光耀+1d4'},
+  shortbow:{n:'短弓',type:'weapon',dmg:'1d6',rng:6,ranged:1,price:25},
+  longbow:{n:'长弓',type:'weapon',dmg:'1d8',rng:8,ranged:1,price:50},
+  leather:{n:'皮甲',type:'armor',ac:11,dexcap:99,price:10},
+  studded:{n:'镶钉皮甲',type:'armor',ac:12,dexcap:99,price:45},
+  chainshirt:{n:'链衫',type:'armor',ac:13,dexcap:2,price:50},
+  plate:{n:'板甲',type:'armor',ac:18,dexcap:0,price:1500},
+  shield:{n:'盾牌',type:'shield',ac:2,price:10},
+  potion_heal:{n:'治疗药水',type:'potion',heal:'2d4+2',price:50,desc:'恢复2d4+2生命'},
+  potion_greater:{n:'强效治疗药水',type:'potion',heal:'4d4+4',price:150,desc:'恢复4d4+4生命'},
+  potion_fire:{n:'抗火药水',type:'potion',fireres:1,price:110,desc:'1小时内火焰伤害减半'},
+  scroll_magic:{n:'魔法飞弹卷轴',type:'scroll',cast:'magicmissile',price:60,desc:'消耗品：释放魔法飞弹'},
+  herb:{n:'银叶草',type:'quest',price:5,desc:'修道院需要的药材'},
+  ore:{n:'星铁矿石',type:'quest',price:20,desc:'布洛姆想要的矿石'},
+  page:{n:'民谣残页',type:'quest',price:2,desc:'芬恩寻找的歌谣残页'},
+  shard:{n:'星核碎片',type:'quest',price:0,desc:'坠星的核心碎片，位面之门的钥匙'},
+  dragonorb:{n:'龙息宝珠',type:'trinket',price:180,desc:'战斗中使用：3格锥形火焰 4d6（每日一次）'},
+  luckcharm:{n:'灵感徽章',type:'trinket',price:0,desc:'所有检定+1（被动）'},
+  shadowkey:{n:'影匣钥匙',type:'quest',price:0,desc:'幽影议会信物'},
+  starcrown:{n:'星辰之冠',type:'quest',price:0,desc:'星灵加冕的信物，价值连城'},
+};
+
+/* 怪物（SRD 数值） spd单位英尺 */
+const MONSTERS={
+  giant_rat:{n:'巨鼠',cr:0.125,ac:12,hp:7,spd:30,atk:[{name:'噬咬',tb:4,dmg:'1d4+2',type:'穿刺'}],loot:[0,3]},
+  goblin:{n:'哥布林',cr:0.25,ac:15,hp:7,spd:30,atk:[{name:'弯刀',tb:4,dmg:'1d6+2',type:'挥砍'},{name:'短弓',tb:4,dmg:'1d6+2',type:'穿刺',rng:6}],loot:[2,12]},
+  skeleton:{n:'骷髅',cr:0.25,ac:13,hp:13,spd:30,tag:'undead',atk:[{name:'短剑',tb:4,dmg:'1d6+2',type:'挥砍'}],loot:[0,8]},
+  wolf:{n:'狼',cr:0.25,ac:13,hp:11,spd:40,tag:'beast',atk:[{name:'噬咬',tb:4,dmg:'2d4+2',type:'穿刺',prone:.25}],loot:[0,5]},
+  spider:{n:'巨狼蛛',cr:0.25,ac:13,hp:11,spd:30,tag:'beast',atk:[{name:'噬咬',tb:3,dmg:'1d8+1',type:'穿刺',poison:{dc:11,dmg:'2d8'}}],loot:[0,6]},
+  bandit:{n:'土匪',cr:0.125,ac:12,hp:11,spd:30,atk:[{name:'弯刀',tb:3,dmg:'1d6+1',type:'挥砍'}],loot:[5,20]},
+  zombie:{n:'僵尸',cr:0.25,ac:8,hp:22,spd:20,tag:'undead',atk:[{name:'重棒',tb:3,dmg:'1d8+1',type:'钝击'}],loot:[0,5]},
+  orc:{n:'兽人',cr:0.5,ac:13,hp:15,spd:30,atk:[{name:'巨斧',tb:5,dmg:'1d12+3',type:'挥砍'},{name:'投矛',tb:5,dmg:'1d6+3',type:'穿刺',rng:5}],loot:[5,25]},
+  shadow:{n:'暗影',cr:0.5,ac:12,hp:16,spd:40,tag:'undead',atk:[{name:'消耗之触',tb:4,dmg:'2d6+2',type:'黯蚀'}],loot:[0,10]},
+  ghoul:{n:'食尸鬼',cr:1,ac:12,hp:22,spd:30,tag:'undead',atk:[{name:'噬咬',tb:4,dmg:'2d4+2',type:'穿刺',para:{dc:10}},{name:'利爪',tb:4,dmg:'2d4+2',type:'挥砍'}],loot:[0,15]},
+  imp:{n:'小恶魔',cr:1,ac:13,hp:10,spd:30,tag:'fiend',atk:[{name:'刺尾',tb:5,dmg:'1d4+3',type:'穿刺',poison:{dc:11,dmg:'1d6'}}],invisR1:1,loot:[10,40]},
+  specter:{n:'幽灵',cr:1,ac:12,hp:22,spd:30,tag:'undead',fly:1,atk:[{name:'生命汲取',tb:4,dmg:'2d6+2',type:'黯蚀'}],loot:[0,20]},
+  orog:{n:'兽人头目',cr:2,ac:14,hp:42,spd:30,two:1,atk:[{name:'巨斧',tb:6,dmg:'1d12+4',type:'挥砍'},{name:'投矛',tb:6,dmg:'1d6+4',type:'穿刺',rng:5}],loot:[20,80]},
+  ogre:{n:'食人魔',cr:2,ac:11,hp:59,spd:40,atk:[{name:'大棒',tb:6,dmg:'2d8+4',type:'钝击'},{name:'投枪',tb:6,dmg:'2d6+4',type:'穿刺',rng:5}],loot:[15,70]},
+  gargoyle:{n:'石像鬼',cr:2,ac:15,hp:52,spd:30,fly:1,two:1,atk:[{name:'利爪',tb:4,dmg:'1d6+2',type:'挥砍'}],loot:[20,90]},
+  mimic:{n:'拟身怪',cr:2,ac:12,hp:52,spd:15,atk:[{name:'黏性噬咬',tb:5,dmg:'1d8+3',type:'钝击',grapple:1}],loot:[40,150]},
+  winterwolf:{n:'冬狼',cr:3,ac:13,hp:75,spd:50,tag:'beast',atk:[{name:'噬咬',tb:6,dmg:'2d6+4',type:'穿刺'}],breath:{dc:12,abil:'dex',dmg:'8d6',type:'冷冻',half:1,name:'寒息',cool:3},loot:[30,120]},
+  yeti:{n:'雪原雪怪',cr:3,ac:13,hp:68,spd:40,two:1,atk:[{name:'冰爪',tb:6,dmg:'2d8+4',type:'钝击'}],breath:{dc:13,abil:'con',dmg:'3d8',type:'冷冻',half:1,name:'寒颤吼',cool:3},loot:[30,130]},
+  astral_raider:{n:'星界掠夺者',cr:3,ac:16,hp:65,spd:30,two:1,atk:[{name:'星银巨剑',tb:6,dmg:'2d6+4',type:'挥砍'},{name:'心灵鞭笞',tb:6,dmg:'1d6+2',type:'心灵'}],loot:[50,160]},
+  fey_knight:{n:'堕落妖精骑士',cr:3,ac:16,hp:60,spd:35,two:1,atk:[{name:'荆棘细剑',tb:6,dmg:'1d8+4',type:'穿刺'},{name:'魅惑之刺',tb:6,dmg:'1d4+2',type:'心灵',charm:{dc:13}}],loot:[40,140]},
+  ice_elemental:{n:'冰元素',cr:5,ac:14,hp:90,spd:30,two:1,atk:[{name:'冰拳',tb:7,dmg:'2d8+4',type:'钝击'}],breath:{dc:14,abil:'con',dmg:'4d8',type:'冷冻',half:1,name:'极寒风暴',cool:3},loot:[80,240]},
+  fire_elemental:{n:'火元素',cr:5,ac:13,hp:102,spd:30,two:1,firebody:1,atk:[{name:'灼烧之触',tb:6,dmg:'2d6+3',type:'火焰'}],loot:[80,240]},
+  wraith:{n:'幽魂',cr:5,ac:13,hp:67,spd:30,fly:1,tag:'undead',atk:[{name:'生命汲取',tb:6,dmg:'4d8+3',type:'黯蚀'}],loot:[60,220]},
+  star_golem:{n:'星陨魔像',cr:7,ac:17,hp:114,spd:25,two:1,boss:1,atk:[{name:'星核重拳',tb:8,dmg:'2d8+4',type:'钝击'}],breath:{dc:15,abil:'dex',dmg:'6d6',type:'光耀',half:1,name:'星尘爆',cool:3},loot:[150,400]},
+  rift_devourer:{n:'裂隙吞噬者',cr:9,ac:16,hp:152,spd:30,two:1,boss:1,atk:[{name:'虚空之触',tb:8,dmg:'3d6+5',type:'力场'}],breath:{dc:16,abil:'dex',dmg:'10d6',type:'力场',half:1,name:'位面湮灭波',cool:3},loot:[300,800]},
+  fallen_star:{n:'堕落星灵',cr:12,ac:18,hp:190,spd:30,two:1,boss:1,atk:[{name:'星辰之杖',tb:9,dmg:'3d6+5',type:'光耀'}],breath:{dc:17,abil:'dex',dmg:'10d10',type:'光耀',half:1,name:'超新星',cool:3},loot:[0,0]},
+};
+
+/* ---------------- 世界数据 ---------------- */
+const PLANES={
+  material:{n:'主物质位面',pal:{0:'#5d8a3c',1:'#2e5a26',2:'#6b6b6b',3:'#2f5d8a',4:'#a88d5a',5:'#8a5a3a',6:'#4a5d3a',7:'#d8d8e2',8:'#b09a5f',9:'#c24a1d',10:'#8a6d3f',11:'#3a2a5a',12:'#7a7a72'}},
+  astral:{n:'星界',pal:{12:'#3a3355',14:'#5a4f8a',2:'#241f3d',11:'#6a5aaa'}},
+  elemental:{n:'元素位面',pal:{12:'#5a4a3a',8:'#c24a1d',7:'#bcd8e8',2:'#7a3a1d'}},
+  shadow:{n:'幽影位面',pal:{12:'#2e2e38',1:'#1d1d28',6:'#232333',3:'#12121c'}},
+  fey:{n:'翡翠荒野',pal:{0:'#4aa85a',1:'#1d7a3a',12:'#8ac46a',3:'#2a8abf'}},
+};
+const TILE_PASS={0:1,1:1,2:0,3:0,4:1,5:1,6:1,7:1,8:1,9:0,10:1,11:1,12:1,14:1};
+
+const REGIONS=[
+  {id:'plains',n:'翠风平原',rect:[3,6,45,32],enc:[['goblin',1,2],['wolf',1,2],['bandit',1,2]]},
+  {id:'forest',n:'迷雾森林',rect:[26,1,47,14],enc:[['wolf',1,3],['spider',1,2],['goblin',1,3]]},
+  {id:'frost',n:'霜脊山地',rect:[1,1,25,5],enc:[['winterwolf',1,1],['yeti',1,1],['orc',1,2]]},
+  {id:'marsh',n:'幽影沼泽',rect:[1,28,20,35],enc:[['ghoul',1,2],['zombie',1,3],['shadow',1,1]]},
+  {id:'ashen',n:'灰烬荒原',rect:[38,20,47,34],enc:[['imp',1,2],['orog',1,2],['fire_elemental',1,1]]},
+  {id:'crater',n:'星陨裂谷',rect:[36,3,45,12],enc:[['skeleton',2,3],['specter',1,2]]},
+  {id:'road',n:'王道商路',rect:[0,16,47,18],enc:[['bandit',1,3]]},
+];
+const PLANE_ENC={
+  astral:[['astral_raider',1,2],['specter',1,2]],
+  elemental:[['fire_elemental',1,1],['ice_elemental',1,1]],
+  shadow:[['shadow',2,3],['specter',1,2],['wraith',1,1]],
+  fey:[['wolf',2,3],['fey_knight',1,1]],
+};
+
+const RUMORS=[
+  '「星陨那夜，修道院的钟自己响了七声。」',
+  '「灰烬要塞的瓦尔克年轻时是教会骑士，你知道他为什么离开吗？」',
+  '「幽影沼泽的水面上，有时能看见另一个天空。」',
+  '「商盟会长菲娜收藏着一枚星核碎片——她说那只是『镇纸』。」',
+  '「星陨坑底部的门扉上刻着：四钥归位，万象启程。」',
+  '「冬狼的嚎叫能冻住血液，霜脊的猎人从不单独过夜。」',
+  '「迷雾森林深处有棵会说话的树，它只对支付故事的人说话。」',
+  '「翡翠荒野的泉水能治百病——如果你能找到它的话。」',
+  '「位面掠夺者来自星界，他们猎杀一切发光的东西。」',
+  '「据说石阵在满月之夜会指向下一个裂隙。」',
+  '「堕落星灵曾经也是神明，直到它坠落那天。」',
+  '「老米尔顿隐居前是宫廷占星师，他拒绝谈论星陨。」',
+  '「龙裔废墟里埋着吐息宝珠，龙魂仍在其中低语。」',
+  '「如果你想活过星陨纪念日，别在黄昏时分靠近裂谷。」',
+];
+
+const TREASURE_ITEMS=['potion_heal','potion_greater','potion_fire','scroll_magic'];
+
+/* =====================================================
+   游戏状态
+===================================================== */
+let G=null;
+let phaserGame=null,scene=null;
+const SAVE_KEY='aetherlos_save_v1';
+
+function defaultState(){
+  return {
+    created:false,ver:1,
+    name:'',race:'human',cls:'fighter',bg:'acolyte',
+    level:1,xp:0,stats:{str:10,dex:10,con:10,int:10,wis:10,cha:10},
+    skills:[],hp:10,hpMax:10,gold:25,
+    inv:[],equip:{weapon:null,armor:null,shield:null,trinket:null},
+    spells:[],slotsUsed:[0,0,0,0,0],
+    breathUsed:false,healPool:0,luckReroll:1,
+    plane:'material',x:8,y:18,
+    time:8*60,day:1,weather:'clear',
+    fav:{church:0,ash:0,shadow:0,trade:0},
+    flags:{},quests:{},memory:{},
+    planesUnlocked:{material:true},
+    fog:{},shards:0,
+    encounterCd:0,kills:0,days:1,
+    settings:{sound:true,bgm:true},
+    log:[]
+  };
+}
+
+/* ---------------- 规则辅助 ---------------- */
+const mod=s=>Math.floor((G.stats[s]-10)/2);
+const prof=()=>2+Math.floor((G.level-1)/4);
+const castMod=()=>{const c=CLASSES[G.cls];return c.casting?mod(c.casting):0;};
+const spellDC=()=>8+prof()+castMod();
+const spellAtk=()=>prof()+castMod();
+function skillMod(name){
+  const ab=SKILLS[name];if(!ab)return mod('int');
+  let v=mod(ab)+(G.skills.includes(name)?prof():0);
+  if(G.flags.luckcharm)v+=1;
+  if(G.weather==='fog'&&(name==='察觉'||name==='生存'))v-=2;
+  if(G.flags.blessStar)v+=1;
+  return v;
+}
+function saveMod(ab){
+  let v=mod(ab)+(CLASSES[G.cls].saves.includes(ab)?prof():0);
+  if(G.flags.blessStar)v+=1;
+  return v;
+}
+function armorObj(){const e=G.equip.armor;return e?ITEMS[e]:null;}
+function computeAC(){
+  const a=armorObj();
+  let ac=a?a.ac+Math.min(mod('dex'),a.dexcap):10+mod('dex');
+  if(G.equip.shield)ac+=2;
+  if(G.equip.trinket==='dragonorb')ac+=0;
+  return ac;
+}
+function slotsMaxFor(lv,cls){
+  const c=CLASSES[cls];
+  if(!c.casting)return [];
+  return (c.castingHalf?SLOT_HALF:SLOT_FULL)[lv]||[];
+}
+function slotsAvail(lvl){ // lvl 从1起
+  const maxArr=slotsMaxFor(G.level,G.cls);
+  return (maxArr[lvl-1]||0)-(G.slotsUsed[lvl-1]||0);
+}
+function useSlot(lvl){ // 返回实际消耗的位阶（可高环代低环）
+  for(let l=lvl;l<=5;l++){
+    if(slotsAvail(l)>0){G.slotsUsed[l-1]++;return l;}
+  }
+  return 0;
+}
+function maxSpellLvl(){
+  if(!CLASSES[G.cls].casting)return 0;
+  const full={1:1,2:1,3:2,4:2,5:3,6:3,7:4,8:4,9:5,10:5};
+  if(CLASSES[G.cls].castingHalf){const half={1:0,2:1,3:1,4:1,5:2,6:2,7:2,8:2,9:3,10:3};return half[G.level];}
+  return full[G.level];
+}
+function weaponOf(u){ // 战斗单位用
+  if(u.player){
+    const wid=G.equip.weapon||'dagger';
+    return ITEMS[wid];
+  }
+  return null;
+}
+
+/* ---------------- 背包 ---------------- */
+function giveItem(id,qty){qty=qty||1;
+  const it=G.inv.find(x=>x.id===id);
+  if(it)it.qty+=qty;else G.inv.push({id,qty});
+  Game.log('获得【'+ITEMS[id].n+'】×'+qty,'gain');SFX.play('coin');
+}
+function hasItem(id){return G.inv.some(x=>x.id===id&&x.qty>0);}
+function removeItem(id,qty){qty=qty||1;
+  const i=G.inv.findIndex(x=>x.id===id);
+  if(i<0)return false;
+  G.inv[i].qty-=qty;if(G.inv[i].qty<=0)G.inv.splice(i,1);return true;
+}
+function gainGold(n){G.gold+=n;Game.log((n>=0?'获得':'失去')+' '+Math.abs(n)+' 金币','gain');if(n>0)SFX.play('coin');renderTopbar();}
+function gainXp(n){
+  G.xp+=n;Game.log('获得 '+n+' 经验值','gain');
+  while(G.level<10&&G.xp>=XP_TABLE[G.level+1])levelUp();
+  renderTopbar();
+}
+function levelUp(){
+  G.level++;
+  const c=CLASSES[G.cls];
+  const gain=Math.max(1,R.d(c.hd)+mod('con'));
+  G.hpMax+=gain;G.hp=G.hpMax;
+  const newSpells=(c.spells||[]).filter(sid=>SPELLS[sid].lvl<=maxSpellLvl()&&!G.spells.includes(sid));
+  G.spells=G.spells.concat(newSpells);
+  Game.log('等级提升！你现在是 '+G.level+' 级，生命上限 +'+gain,'sys');
+  if(newSpells.length)Game.log('领悟新法术：'+newSpells.map(s=>SPELLS[s].n).join('、'),'sys');
+  SFX.play('level');toast('等级提升至 '+G.level+' 级！');
+}
+
+function autoSave(){
+  if(G&&G.created&&!Combat.active&&!Game.ended){
+    try{localStorage.setItem(SAVE_KEY,JSON.stringify(G));}catch(e){}
+  }
+}
+
+/* =====================================================
+   UI 基础
+===================================================== */
+let curTab='story';
+function toast(t){
+  const el=$('toast');el.textContent=t;el.classList.remove('hidden');
+  el.classList.remove('fadein');void el.offsetWidth;el.classList.add('fadein');
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.add('hidden'),2200);
+}
+function dicePopup(label,val,detail){
+  const p=$('dicePop');$('diceLabel').textContent=label;$('diceVal').textContent=val;$('diceDetail').textContent=detail||'';
+  p.classList.remove('hidden');p.querySelector('.rollpop');
+  p.style.display='block';
+  const inner=p.firstElementChild;inner.classList.remove('rollpop');void inner.offsetWidth;inner.classList.add('rollpop');
+  clearTimeout(p._t);p._t=setTimeout(()=>p.style.display='none',1400);
+}
+function openModal(html){
+  $('modalBox').innerHTML=html;
+  $('modalHost').classList.remove('hidden');
+  $('modalHost').classList.add('flex');
+}
+function closeModal(){$('modalHost').classList.add('hidden');$('modalHost').classList.remove('flex');}
+function modalOpen(){return !$('modalHost').classList.contains('hidden');}
+function banner(text){
+  const b=$('locBanner');b.textContent=text;b.classList.remove('hidden');
+  b.classList.remove('banner');void b.offsetWidth;b.classList.add('banner');
+  clearTimeout(b._t);b._t=setTimeout(()=>b.classList.add('hidden'),2600);
+}
+function switchTab(t){
+  curTab=t;
+  document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  renderStory();
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.tabbtn').forEach(b=>b.onclick=()=>{SFX.play('click');switchTab(b.dataset.tab);});
+});
+
+/* =====================================================
+   Game 主对象
+===================================================== */
+const Game={
+  log(text,cls){
+    if(!G)return;
+    G.log.push({t:text,c:cls||'',d:G.day});
+    if(G.log.length>400)G.log.shift();
+    if(curTab==='story'&&!Dlg.active)renderStory();
+  },
+  check(skill,dc){ // 技能检定
+    const m=skillMod(skill);
+    let adv=0;
+    if(G.weather==='storm'&&R.chance(.1))adv=1; // 风暴中的奇迹
+    const r=R.rollD20(m,adv);
+    if(G.race==='halfling'&&r.nat===1&&G.luckReroll>0){
+      G.luckReroll--;const r2=R.rollD20(m,adv);r2.rerolled=true;return this._checkRes(skill,dc,r2,m);
+    }
+    return this._checkRes(skill,dc,r,m);
+  },
+  _checkRes(skill,dc,r,m){
+    dicePopup(skill+' 检定',(r.total)+' vs DC'+dc,r.nat+'(d20) + '+m+' = '+r.total+(r.crit?' 大成功!':''));
+    SFX.play('dice');
+    Game.log('【'+skill+'】d20='+r.nat+(r.other?'/'+r.other:'')+' +'+m+' = '+r.total+' vs DC'+dc+(r.total>=dc?' —— 成功':' —— 失败'),'roll');
+    return {ok:r.total>=dc,total:r.total,nat:r.nat,crit:r.crit};
+  },
+  saveThrow(ab,dc){
+    const m=saveMod(ab);
+    const r=R.rollD20(m,0);
+    if(G.race==='halfling'&&r.nat===1&&G.luckReroll>0){G.luckReroll--;return this.saveThrow(ab,dc);}
+    dicePopup(ABILN[ab]+'豁免',r.total+' vs DC'+dc,r.nat+' + '+m);
+    SFX.play('dice');
+    Game.log('【'+ABILN[ab]+'豁免】'+r.total+' vs DC'+dc+(r.total>=dc?' —— 通过':' —— 失败'),'roll');
+    return r.total>=dc;
+  },
+  remember(npc,text){
+    if(!text)return;
+    if(!G.memory[npc])G.memory[npc]=[];
+    if(G.memory[npc].some(x=>x.t===text))return;
+    G.memory[npc].push({t:text,d:G.day});
+    if(G.memory[npc].length>8)G.memory[npc].shift();
+  },
+  qst(id,st){
+    if(!G.quests[id])G.quests[id]={st:0,done:false};
+    G.quests[id].st=st;
+    Game.log('任务【'+QUESTS[id].n+'】更新：'+(QUESTS[id].stages[st]||'……'),'quest');SFX.play('quest');
+    autoSave();renderStory();
+  },
+  qdone(id){
+    if(!G.quests[id])G.quests[id]={st:0,done:false};
+    G.quests[id].done=true;
+    Game.log('任务完成【'+QUESTS[id].n+'】','quest');SFX.play('quest');
+    autoSave();
+  },
+  favAdd(k,n){
+    G.fav[k]=Math.max(0,Math.min(100,G.fav[k]+n));
+    const names={church:'星辉教会',ash:'灰烬兄弟会',shadow:'幽影议会',trade:'自由商盟'};
+    Game.log(names[k]+'好感 '+(n>=0?'+':'')+n+'（当前 '+G.fav[k]+'）','sys');
+  },
+  addShard(){
+    G.shards++;giveItem('shard');
+    Game.log('星核碎片（'+G.shards+'/4）已入手。位面之门在低语……','quest');
+    if(!G.quests.m3)Game.qst('m3',1);
+    if(G.shards>=4){Game.qst('m3',2);Game.log('四枚碎片齐鸣！去星陨坑的星核祭坛，书写终局。','quest');}
+    autoSave();
+  },
+  unlockPlane(p,name){
+    if(G.planesUnlocked[p])return;
+    G.planesUnlocked[p]=true;
+    Game.log('位面之门开启：【'+name+'】现已可从星陨坑传送门抵达！','quest');SFX.play('quest');
+  },
+  busy(){return !G||!G.created||Combat.active||Dlg.active||modalOpen()||Game.ended;},
+  newGame(opts){
+    G=defaultState();
+    G.created=true;
+    G.name=opts.name||'无名者';
+    G.race=opts.race;G.cls=opts.cls;G.bg=opts.bg;
+    G.stats=Object.assign({},opts.stats);
+    const asi=RACES[G.race].asi||{};
+    ABILS.forEach(a=>{if(asi[a])G.stats[a]+=asi[a];});
+    const c=CLASSES[G.cls],rc=RACES[G.race],bg=BGS[G.bg];
+    G.skills=[...c.pool].length>=c.nskill?c.pool.slice(0,c.nskill):c.pool.slice();
+    if(bg.skills)bg.skills.forEach(s=>{if(!G.skills.includes(s))G.skills.push(s);});
+    if(rc.skill&&!G.skills.includes(rc.skill))G.skills.push(rc.skill);
+    if(G.bg==='human'){}
+    G.hpMax=CLASSES[G.cls].hd+mod('con');c.gear.forEach(([id,q])=>{G.inv.push({id,qty:q});});
+    G.equip.weapon=(c.gear.find(x=>ITEMS[x[0]].type==='weapon')||['dagger'])[0];
+    const ar=c.gear.find(x=>ITEMS[x[0]].type==='armor');if(ar)G.equip.armor=ar[0];
+    const sh=c.gear.find(x=>ITEMS[x[0]].type==='shield');if(sh)G.equip.shield=sh[0];
+    G.hp=G.hpMax;
+    G.gold=25+R.ri(0,10);
+    if(c.spells)G.spells=c.spells.filter(sid=>SPELLS[sid].lvl<=1);
+    else G.spells=[];
+    G.healPool=c===CLASSES.cleric||G.cls==='cleric'?G.level*3:0;
+    if(G.bg==='sage')giveItem('scroll_magic');
+    G.fav.church+=G.bg==='acolyte'?10:0;
+    G.fav.shadow+=G.bg==='criminal'?10:0;
+    G.fav.trade+=G.bg==='folkhero'?10:0;
+    G.quests={m1:{st:0,done:false}};
+    initFog('material');
+    Game.log('星陨之夜，天空裂开。'+G.name+'，你的传说自新月镇开始……','sys');
+    Game.log('【主线】星陨之夜：与镇长艾德温谈谈（新月镇，往地图西侧走）。','quest');
+    revealFog();
+    switchTab('story');
+    showGameUI();
+    $('combatBar').classList.add('hidden');
+    renderAll();
+    if(scene)scene.refreshAll();
+    banner('主物质位面 · 新月镇');
+    autoSave();
+    SFX.bgm(G.settings.bgm);
+  },
+  save(silent){
+    try{
+      localStorage.setItem(SAVE_KEY,JSON.stringify(G));
+      if(!silent){Game.log('游戏已存档。','sys');toast('已存档');}
+    }catch(e){toast('存档失败：'+e.message);}
+  },
+  load(){
+    try{
+      const raw=localStorage.getItem(SAVE_KEY);
+      if(!raw)return false;
+      G=JSON.parse(raw);
+      G.created=true;
+      switchTab('story');
+      showGameUI();
+      $('combatBar').classList.add('hidden');
+      renderAll();
+      if(scene)scene.refreshAll();
+      Game.log('存档已读取：第'+G.day+'天，'+PLANES[G.plane].n+'。','sys');
+      banner(PLANES[G.plane].n);
+      return true;
+    }catch(e){toast('读档失败');return false;}
+  },
+  ending(id){
+    Game.ended=true;
+    const e=ENDINGS[id];
+    $('endTitle').textContent=e.n;
+    $('endText').innerHTML=e.txt.replace(/\n/g,'<br>');
+    const favn={church:'星辉教会',ash:'灰烬兄弟会',shadow:'幽影议会',trade:'自由商盟'};
+    $('endStats').innerHTML='冒险者：'+esc(G.name)+' · '+RACES[G.race].n+CLASSES[G.cls].n+' · '+G.level+'级<br>'+
+      '历时 '+G.days+' 天 · 击杀 '+G.kills+' · 金币 '+G.gold+' · 经验 '+G.xp+'<br>'+
+      '阵营好感：'+Object.keys(favn).map(k=>favn[k]+' '+G.fav[k]).join(' · ')+'<br>'+
+      '结局达成：'+e.n+'（共6种结局等你收集）';
+    $('endingScreen').classList.remove('hidden');
+    localStorage.removeItem(SAVE_KEY);
+    SFX.play('level');
+  }
+};
+
+/* =====================================================
+   地图生成（种子确定，可复现）
+===================================================== */
+let MAP={cur:null,maps:{}};
+const TS=24;
+function idx(x,y,w){return y*w+x;}
+
+function genOverworld(){
+  const w=48,h=36,rand=mulberry32(20251025);
+  const t=new Array(w*h).fill(0);
+  // 生物群系
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=idx(x,y,w);
+    if(y<5+Math.floor(rand()*2))t[i]=rand()<.12?2:7;              // 霜脊
+    else if(x>26&&y<15&&rand()<.5)t[i]=1;                          // 迷雾森林
+    else if(y>28&&x<22&&rand()<.55)t[i]=rand()<.3?3:6;             // 幽影沼泽
+    else if(x>40&&y>18&&rand()<.5)t[i]=8;                          // 灰烬荒原
+    else if(rand()<.06)t[i]=1;
+  }
+  // 湖与桥
+  for(let y=20;y<25;y++)for(let x=16;x<21;x++){if((x-18)*(x-18)+(y-22)*(y-22)<6)t[idx(x,y,w)]=3;}
+  t[idx(18,22,w)]=10;t[idx(18,21,w)]=10;t[idx(18,23,w)]=10;
+  // 山脉点缀
+  for(let i=0;i<40;i++){const x=Math.floor(rand()*w),y=Math.floor(rand()*h);if(t[idx(x,y,w)]===0)t[idx(x,y,w)]=2;}
+  // 星陨坑
+  for(let y=5;y<11;y++)for(let x=37;x<44;x++){const d=(x-40)*(x-40)+(y-8)*(y-8);if(d<6)t[idx(x,y,w)]=11;}
+  for(let i=0;i<5;i++){t[idx(36+Math.floor(rand()*3),10+Math.floor(rand()*4),w)]=9;}
+  // 王道商路（横竖）
+  for(let x=2;x<47;x++)t[idx(x,17,w)]=4;
+  for(let y=3;y<34;y++)t[idx(24,y,w)]=4;
+  for(let x=24;x<41;x++)t[idx(x,17-Math.floor((x-24)*.2),w)]=4;
+  for(let y=17;y<31;y++)t[idx(10-Math.floor((y-17)*.15),y,w)]=4;
+  // 城镇地块
+  function townAt(x,y){for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const xx=x+dx,yy=y+dy;if(xx>0&&yy>0&&xx<w-1&&yy<h-1&&t[idx(xx,yy,w)]!==3)t[idx(xx,yy,w)]=5;}}
+  townAt(8,18);townAt(12,5);townAt(42,27);townAt(7,30);townAt(24,16);
+  // 城镇与地点地块保底通行
+  LOCS.filter(l=>l.plane==='material').forEach(l=>{
+    t[idx(l.x,l.y,w)]=l.id==='crater'?11:5;
+    if(l.y+1<h&&!TILE_PASS[t[idx(l.x,l.y+1,w)]])t[idx(l.x,l.y+1,w)]=4;
+    if(l.y-1>=0&&!TILE_PASS[t[idx(l.x,l.y-1,w)]])t[idx(l.x,l.y-1,w)]=4;
+    if(l.x-1>=0&&!TILE_PASS[t[idx(l.x-1,l.y,w)]])t[idx(l.x-1,l.y,w)]=4;
+    if(l.x+1<w&&!TILE_PASS[t[idx(l.x+1,l.y,w)]])t[idx(l.x+1,l.y,w)]=4;
+  });
+  return {id:'material',w,h,t};
+}
+function genPlane(pid){
+  const w=32,h=24,rand=mulberry32(pid.length*777+42);
+  const base={astral:12,elemental:12,shadow:12,fey:0}[pid];
+  const t=new Array(w*h).fill(base);
+  for(let i=0;i<w*h;i++){
+    const r=rand();
+    if(pid==='astral'&&r<.14)t[i]=2;
+    if(pid==='elemental'){if(r<.12)t[i]=8;else if(r<.2)t[i]=7;}
+    if(pid==='shadow'&&r<.2)t[i]=1;
+    if(pid==='fey'&&r<.3)t[i]=1;
+  }
+  // 障碍带
+  for(let k=0;k<8;k++){
+    const cx=4+Math.floor(rand()*(w-8)),cy=4+Math.floor(rand()*(h-8)),rad=1+Math.floor(rand()*2);
+    for(let y=cy-rad;y<=cy+rad;y++)for(let x=cx-rad;x<=cx+rad;x++){
+      if(x<0||y<0||x>=w||y>=h)continue;
+      const i=idx(x,y,w);
+      if(pid==='astral')t[i]=2;else if(pid==='elemental')t[i]=rand()<.5?8:7;
+      else if(pid==='shadow')t[i]=3;else t[i]=1;
+    }
+  }
+  // 位面关键点保底通行
+  LOCS.filter(l=>l.plane===pid).forEach(l=>{
+    t[idx(l.x,l.y,w)]=base;
+    [[0,1],[0,-1],[1,0],[-1,0]].forEach(([dx,dy])=>{
+      const xx=l.x+dx,yy=l.y+dy;
+      if(xx>=0&&yy>=0&&xx<w&&yy<h)t[idx(xx,yy,w)]=base;
+    });
+  });
+  return {id:pid,w,h,t};
+}
+function getMap(pid){
+  if(!MAP.maps[pid]){
+    MAP.maps[pid]=pid==='material'?genOverworld():genPlane(pid);
+  }
+  return MAP.maps[pid];
+}
+function initFog(pid){
+  if(G.fog[pid])return;
+  const m=getMap(pid);
+  G.fog[pid]=new Array(m.w*m.h).fill(0);
+}
+function regionAt(x,y){
+  if(G.plane!=='material')return {id:G.plane,n:PLANES[G.plane].n};
+  for(const r of REGIONS){const [x1,y1,x2,y2]=r.rect;if(x>=x1&&x<=x2&&y>=y1&&y<=y2)return r;}
+  return REGIONS[0];
+}
+
+/* ---------------- 地点 ---------------- */
+const LOCS=[
+  {id:'newmoon',n:'新月镇',plane:'material',x:8,y:18,g:'城',desc:'石墙环抱着鹅卵石街道，钟楼的裂痕是星陨之夜留下的伤疤。这里是幸存者的避风港。'},
+  {id:'monastery',n:'星辉修道院',plane:'material',x:12,y:5,g:'修',desc:'白塔刺破云层，晚祷的圣歌驱散着夜色。大祭司塞拉菲娜在此守护第一枚圣物。'},
+  {id:'ashen',n:'灰烬要塞',plane:'material',x:42,y:27,g:'塞',desc:'用坠星残骸浇筑的黑色堡垒。灰烬兄弟会相信：力量就该属于敢伸手的人。'},
+  {id:'shadowmarsh',n:'幽影沼泽',plane:'material',x:7,y:30,g:'影',desc:'雾气在黑水面上织出低语。幽影议会的奈莎在这里倾听死者的声音。'},
+  {id:'tradehall',n:'商路驿站',plane:'material',x:24,y:16,g:'驿',desc:'王道商路的心脏。自由商盟的骆驼队仍固执地穿越战火，因为「哪里有恐慌，哪里就有生意」。'},
+  {id:'crater',n:'星陨坑',plane:'material',x:40,y:7,g:'坑',desc:'大地被撕开的伤口深处，矗立着一扇刻有四道凹槽的门扉。星核的共鸣在坑底回荡。'},
+  {id:'deepforest',n:'迷雾林深处',plane:'material',x:30,y:3,g:'林',desc:'树冠遮天蔽日。老猎人说，迷雾深处通向某个「更绿的天地」。'},
+  {id:'frosttower',n:'霜脊哨塔',plane:'material',x:19,y:2,g:'塔',desc:'边境游侠的瞭望塔，塔顶的狼烟昼夜不熄——霜脊的冬狼越来越多了。'},
+  {id:'ruins',n:'龙裔废墟',plane:'material',x:45,y:15,g:'墟',desc:'龙裔帝国的断柱间，龙魂的低语从未停歇。'},
+  {id:'stones',n:'古老石阵',plane:'material',x:15,y:23,g:'阵',desc:'十二块巨石围成环，每一块都指向不同的星座——包括那颗已经陨落的。'},
+  {id:'hermit',n:'隐士小屋',plane:'material',x:33,y:21,g:'屋',desc:'前宫廷占星师米尔顿的居所，屋檐下挂满星图。'},
+  {id:'ford',n:'渡口',plane:'material',x:21,y:27,g:'渡',desc:'河湾处的老渡口。最近，渡船再也没回来过。'},
+  {id:'a_hulk',n:'星槎残骸',plane:'astral',x:24,y:7,g:'骸',desc:'一艘横陈星海的巨船残骸，船身凝聚着第一枚星核碎片的辉光。'},
+  {id:'a_obs',n:'观星台',plane:'astral',x:7,y:7,g:'观',desc:'教会先贤建造的浮空平台，从这里能看见诸位面的脉络。'},
+  {id:'a_gate',n:'归途之门',plane:'astral',x:3,y:20,g:'门',desc:'回到主物质位面的传送门。'},
+  {id:'e_temple',n:'元素圣殿',plane:'elemental',x:16,y:12,g:'圣',desc:'半边烈焰半边寒冰的神殿，双元素看守着第二枚星核。'},
+  {id:'e_gate',n:'归途之门',plane:'elemental',x:3,y:20,g:'门',desc:'回到主物质位面的传送门。'},
+  {id:'s_corridor',n:'静默回廊',plane:'shadow',x:24,y:12,g:'廊',desc:'声音在此死去。幽魂守卫着第三枚星核，它坠入影子太久，已经半黑。'},
+  {id:'s_market',n:'影都集市',plane:'shadow',x:8,y:7,g:'市',desc:'幽影位面的黑市。这里出售记忆、名字，偶尔也出售希望。'},
+  {id:'s_gate',n:'归途之门',plane:'shadow',x:3,y:20,g:'门',desc:'回到主物质位面的传送门。'},
+  {id:'f_tree',n:'宴会树',plane:'fey',x:16,y:8,g:'宴',desc:'一棵挂满灯笼的巨树，堕落妖精骑士在此举办永不散场的宴席。'},
+  {id:'f_spring',n:'湖心泉',plane:'fey',x:8,y:16,g:'泉',desc:'翡翠荒野的治愈之泉。'},
+  {id:'f_gate',n:'归途之门',plane:'fey',x:3,y:20,g:'门',desc:'回到主物质位面的传送门。'},
+];
+function locAt(x,y,plane){
+  return LOCS.find(l=>l.plane===(plane||G.plane)&&l.x===x&&l.y===y);
+}
+function locById(id){return LOCS.find(l=>l.id===id);}
+
+/* =====================================================
+   NPC 与对话
+===================================================== */
+function f(k){return !!G.flags[k];}
+function setF(k,v){G.flags[k]=v===undefined?true:v;}
+function node(t,opts){return {t,opts};}
+
+const NPCS={
+  /* ---- 镇长 艾德温 ---- */
+  mayor:{name:'镇长 艾德温',loc:'newmoon',bio:'前佣兵队长，星陨之夜后临危受命。鬓角已白，眼神未老。',
+    root(){
+      const mem=G.memory['mayor']||[];
+      let t='艾德温在镇公所的星图前踱步：「又是无眠的一夜。'+G.name+'，天空的裂口每晚都在变大。」';
+      if(mem.length)t+='\n（他记得：'+mem[mem.length-1].t+'）';
+      const opts=[];
+      if(!(G.quests.m1&&G.quests.m1.done)){
+        opts.push({t:'「星陨之夜到底发生了什么？」',fn:()=>{
+          Game.log('艾德温压低声音：「一颗星辰坠进了东边的裂谷。四个位面的门扉随之洞开——星界、元素、幽影、翡翠。天上那颗『星』并未死去，它在坠落中变得……饥饿。」');
+          Game.qst('m1',1);
+          return node('「去四大阵营首领处取得信任与情报——教会的大祭司、灰烬要塞的瓦尔克、沼泽里的奈莎、驿站的菲娜。集齐四枚星核碎片，回到星陨坑，我们还有机会关上那扇门。在此之前……」他望向北方，「迷雾森林和霜脊常有怪物袭扰，若你顺手，帮镇子解决它们。」',[
+            {t:'「我会去的。」（接受指引）',fn:()=>{Game.favAdd('church',3);Game.qst('m1',2);Game.qdone('m1');Game.qst('m2',1);}},
+            {t:'「报酬怎么算？」',fn:()=>{gainGold(30);Game.favAdd('trade',3);Game.qst('m1',2);Game.qdone('m1');Game.qst('m2',1);}},
+          ]);
+        }});
+      }else if(!(G.quests.m2&&G.quests.m2.done)){
+        opts.push({t:'「关于星陨坑的任务。」',fn:()=>{
+          return node('「星陨坑在东北方，坑沿有教会最后的守门人卡尔姆。记住：四大阵营各握有一道位面之门的线索——教会、灰烬、幽影、商盟。他们的任务都完成后，碎片才触手可及。」',[
+            {t:'「明白了。」',fn:()=>{Game.qst('m2',1);Game.log('【主线】前往星陨坑见守门人卡尔姆；同时完成各阵营任务以解锁位面。','quest');}}
+          ]);
+        }});
+      }else{
+        opts.push({t:'「最近镇上如何？」',fn:()=>{
+          Game.log('艾德温：「多亏了你。商路重开，伤员渐愈……但天空的裂口仍在扩大。四枚碎片，别忘。」');
+          return node('「 council 还在争吵谁该掌握星核。而你握着的每一枚碎片，都会让某个阵营坐立不安——好好掂量你的盟友。」',[{t:'告辞。',fn:null}]);
+        }});
+      }
+      opts.push({t:'打听传闻（5金币）',fn:()=>{
+        if(G.gold<5){Game.log('金币不足。');return;}
+        gainGold(-5);Game.log('艾德温压低声音：'+R.pick(RUMORS));
+        return node('他凑近：「还有一件事——古老石阵在夜里会发光，学者们都说那是位面坐标。你若路过，不妨看看。」',[{t:'记下了。',fn:null}]);
+      }});
+      opts.push({t:'告辞。',fn:null});
+      return node(t,opts);
+    }},
+  /* ---- 大祭司 塞拉菲娜（星辉教会） ---- */
+  seraphina:{name:'大祭司 塞拉菲娜',loc:'monastery',bio:'星辉教会的领袖。银发，温和，眼底藏着只有神官才懂的疲惫。',
+    root(){
+      const opts=[];
+      if(!f('churchQ1')){
+        opts.push({t:'「请让我为教会效力。」',fn:()=>{
+          Game.log('塞拉菲娜翻开圣典：「夜晚，亡灵从幽影沼泽爬向镇子。净化它们，证明星辉眷顾你。」');
+          Game.qst('church1',1);setF('churchQ1');
+          return node('「完成之后，我会为你打开星界之门的第一道封印。」',[{t:'领命。',fn:null}]);
+        }});
+      }else if(!(G.quests.church1&&G.quests.church1.done)){
+        const need=G.flags.undeadKills||0;
+        opts.push({t:'「关于净化亡灵的任务。（进度 '+Math.min(need,5)+'/5）」',fn:()=>{
+          if(need>=5){
+            Game.qdone('church1');gainXp(400);gainGold(150);Game.favAdd('church',20);
+            setF('astralUnlocked');Game.unlockPlane('astral','星界');
+            Game.log('塞拉菲娜以圣火点亮观星台的坐标：「星界的星槎残骸中，有第一枚碎片。愿星辉指引你。」');
+            return node('「你已证明自己。去吧，取回碎片——它是被星界掠夺者围困的圣物。」',[{t:'（获得星界通行权）',fn:null}]);
+          }
+          return node('「亡灵仍在沼泽游荡（'+Math.min(need,5)+'/5）。小心食尸鬼的麻痹之爪。」',[{t:'继续清剿。',fn:null}]);
+        }});
+      }else if(G.shards<4&&f('astralUnlocked')){
+        opts.push({t:'「星界碎片有别的取法吗？」',fn:()=>{
+          return skillCheckOpt('向塞拉菲娜恳求祝福以降低守卫警觉','宗教',13,()=>{
+              Game.favAdd('church',10);
+              Game.log('她将圣徽按在你额头：「圣辉庇佑——星槎的守卫会迟疑片刻。」');
+              setF('blessAstral');
+            },()=>{Game.log('「以力取之吧。愿你有幸存……我是说，有幸归来的运气。」');});
+        }});
+      }
+      opts.push({t:'祈祷（花费10金币，恢复全部生命，好感+2）',cond:()=>true,fn:()=>{
+        if(G.gold<10){Game.log('金币不足。');return;}
+        gainGold(-10);G.hp=G.hpMax;Game.favAdd('church',2);
+        Game.log('你在星辉祭坛前祈祷，伤势痊愈。','gain');SFX.play('heal');
+        renderTopbar();
+      }});
+      opts.push({t:'告辞。',fn:null});
+      return node('塞拉菲娜放下圣典：「星辉不问出身，只问你为谁点亮蜡烛。'+G.name+'，说吧。」',opts);
+    }},
+  /* ---- 瓦尔克（灰烬兄弟会） ---- */
+  valk:{name:'首领 瓦尔克',loc:'ashen',bio:'灰烬兄弟会首领，前教会骑士。半张脸有灼烧疤痕，语气像淬火的铁。',
+    root(){
+      const opts=[];
+      if(!f('ashQ1')){
+        opts.push({t:'「兄弟会需要什么样的人？」',fn:()=>{
+          Game.log('瓦尔克冷笑：「教会要你跪着祈祷，我们要你站着拿东西。霜脊雪怪踩碎了我们的矿队——去把它解决，顺便把矿队的星铁矿石带回来。」');
+          Game.qst('ash1',1);setF('ashQ1');
+          return node('「干得漂亮，你就是兄弟会的人。」',[{t:'领命。',fn:null}]);
+        }});
+      }else if(!(G.quests.ash1&&G.quests.ash1.done)){
+        opts.push({t:'「关于雪怪与矿石。（雪怪'+(f('yetiDead')?'已除':'未除')+'，矿石'+(hasItem('ore')?'已取得':'未取得')+'）」',fn:()=>{
+          if(f('yetiDead')&&hasItem('ore')){
+            removeItem('ore');Game.qdone('ash1');gainXp(450);gainGold(200);Game.favAdd('ash',20);
+            giveItem(R.pick(['battleaxe','longsword']));
+            setF('elementalUnlocked');Game.unlockPlane('elemental','元素位面');
+            Game.log('瓦尔克把矿石掷进熔炉：「星界之门那头是元素圣殿，火与冰看守第二枚碎片。兄弟会不祈祷——我们直接去拿。」');
+            return node('「去吧。记住：灰烬不问对错，只问结果。」',[{t:'（获得元素位面通行权）',fn:null}]);
+          }
+          return node('「雪怪在霜脊哨塔以北出没，矿石在矿队失事处（霜脊山区）。两样都要。」',[{t:'这就去。',fn:null}]);
+        }});
+      }
+      opts.push({t:'「让我看看兄弟会的武备。」（花80金币买一把巨剑，好感+3）',cond:()=>true,fn:()=>{
+        if(G.gold<80){Game.log('金币不足。');return;}
+        if(!f('boughtGS')){gainGold(-80);giveItem('greataxe');Game.favAdd('ash',3);setF('boughtGS');}
+        else Game.log('「一人一把，别贪。」');
+      }});
+      opts.push({t:'告辞。',fn:null});
+      return node('瓦尔克把战斧砍进石桌：「兄弟会的门槛很简单——能活着带东西回来。'+G.name+'，你能吗？」',opts);
+    }},
+  /* ---- 奈莎（幽影议会） ---- */
+  nessa:{name:'影主 奈莎',loc:'shadowmarsh',bio:'幽影议会之主。她说话时，沼泽的水面会映出她身后的影子先一步动作。',
+    root(){
+      const opts=[];
+      if(!f('shadowQ1')){
+        opts.push({t:'「议会想从我这里得到什么？」',fn:()=>{
+          Game.log('奈莎轻笑：「答案。渡口有一支没回来的商队——活人只会看到残骸。去『读』它，带回你看到的东西。」');
+          Game.qst('shadow1',1);setF('shadowQ1');
+          return node('「影子从不说谎，'+G.name+'。人心才会。」',[{t:'领命。',fn:null}]);
+        }});
+      }else if(!(G.quests.shadow1&&G.quests.shadow1.done)){
+        opts.push({t:'「商队的真相。」',fn:()=>{
+          if(f('fordSeen')){
+            Game.qdone('shadow1');gainXp(400);Game.favAdd('shadow',15);giveItem('shadowkey');
+            setF('shadowUnlocked');Game.unlockPlane('shadow','幽影位面');
+            Game.log('奈莎听完，指尖轻叩水面：「静默回廊的幽魂守着第三枚碎片。这把影匣钥匙会替你打开回廊的门。」');
+            return node('「去吧。别回头——回廊里的东西喜欢数访客的脚步声。」',[{t:'（获得幽影位面通行权）',fn:null}]);
+          }
+          return node('「你还没去渡口（地图西南）。影子在等你。」',[{t:'这就去。',fn:null}]);
+        }});
+      }else if(f('shadowUnlocked')){
+        opts.push({t:'「用20金币买一条情报。」',fn:()=>{
+          if(G.gold<20){Game.log('金币不足。');return;}
+          gainGold(-20);Game.favAdd('shadow',3);
+          Game.log('奈莎低语：'+R.pick(RUMORS));
+          return node('「免费送你一句：永夜比黎明诚实。」',[{t:'告辞。',fn:null}]);
+        }});
+      }
+      opts.push({t:'告辞。',fn:null});
+      return node('奈莎没有回头：「进来吧，'+G.name+'。你的影子比你早到了三步。」',opts);
+    }},
+  /* ---- 菲娜（自由商盟） ---- */
+  fina:{name:'会长 菲娜',loc:'tradehall',bio:'自由商盟会长。算盘与弯刀都挂在腰间，笑容价值千金，也值一文。',
+    root(){
+      const opts=[];
+      if(!f('tradeQ1')){
+        opts.push({t:'「商盟缺人手吗？」',fn:()=>{
+          Game.log('菲娜拨了下算盘：「渡口的商队失联，货物不要紧，人要紧。找到幸存者——或者确认他们都死了，商盟好结账。」');
+          Game.qst('trade1',1);setF('tradeQ1');
+          return node('「报酬好说。商盟的账，向来算得清。」',[{t:'领命。',fn:null}]);
+        }});
+      }else if(!(G.quests.trade1&&G.quests.trade1.done)){
+        opts.push({t:'「商队的下落。」',fn:()=>{
+          if(f('fordCleared')){
+            Game.qdone('trade1');gainXp(400);gainGold(180);Game.favAdd('trade',15);
+            setF('feyUnlocked');Game.unlockPlane('fey','翡翠荒野');
+            Game.log('菲娜签发一张烫金契约：「翡翠荒野的宴会树上有第四枚碎片——妖精骑士欠商盟一笔旧账。这张契约，能让你跟它『谈』。」');
+            return node('「跟妖精打交道，记住：别吃它们的食物，别信它们的笑。」',[{t:'（获得翡翠荒野通行权）',fn:null}]);
+          }
+          return node('「先去渡口（地图西南）清掉土匪，再回来见我。」',[{t:'这就去。',fn:null}]);
+        }});
+      }
+      opts.push({t:'购买补给（进入商店）',fn:()=>{openShop('trade');}});
+      opts.push({t:'投资商栈（500金币，好感+10，每日分红）',fn:()=>{
+        if(f('invested')){Game.log('菲娜：「分红已到账，别贪。」');gainGold(50);return;}
+        if(G.gold<500){Game.log('金币不足。');return;}
+        gainGold(-500);setF('invested');Game.favAdd('trade',10);
+        Game.log('菲娜收下金币：「商盟不会忘记自己人。以后每天回驿站，都有分红。」','gain');
+      }});
+      opts.push({t:'告辞。',fn:null});
+      return node('菲娜拨了拨算盘：「位面要完蛋了——正是做生意的好时候。'+G.name+'，买点什么，或者卖点自己？」',opts);
+    }},
+  /* ---- 铁匠 布洛姆 ---- */
+  bloom:{name:'铁匠 布洛姆',loc:'newmoon',bio:'矮人铁匠，火炉从不熄灭。他说锤子比神明诚实。',
+    root(){
+      const opts=[];
+      if(!f('bloomQ')){
+        opts.push({t:'「需要帮忙吗？」',fn:()=>{
+          Game.log('布洛姆把锤子一横：「北边矿脉的星铁矿石——那玩意儿能打造好东西。给我带一块来，工钱免谈，还送你一件宝贝。」');
+          Game.qst('bloom1',1);setF('bloomQ');
+          return node('「矿石在霜脊矿队失事处，或者任何闪着星光的石头堆里。」',[{t:'领命。',fn:null}]);
+        }});
+      }else if(!(G.quests.bloom1&&G.quests.bloom1.done)&&hasItem('ore')){
+        opts.push({t:'交付星铁矿石',fn:()=>{
+          removeItem('ore');Game.qdone('bloom1');gainXp(300);giveItem('starblade');
+          Game.log('布洛姆抡锤三天三夜，铸出【星辉长剑】。','gain');
+          return node('「拿去！星辉长剑——锤子打的，比祈祷管用。」',[{t:'（获得星辉长剑）',fn:null}]);
+        }});
+      }
+      opts.push({t:'购买武器护甲（进入商店）',fn:()=>{openShop('smith');}});
+      opts.push({t:'告辞。',fn:null});
+      return node('布洛姆头也不抬：「火不熄，锤不停。'+G.name+'，要买东西还是听锤子说话？」',opts);
+    }},
+  /* ---- 药师 老麦格 ---- */
+  mag:{name:'药师 老麦格',loc:'newmoon',bio:'佝偻的老妇，篮子里全是草药与怪话。',
+    root(){
+      const opts=[];
+      opts.push({t:'购买药水（进入商店）',fn:()=>openShop('herb')});
+      if(!f('magQ')){
+        opts.push({t:'「修道院在找什么药？」',fn:()=>{
+          Game.log('麦格推了推篮子：「银叶草，迷雾森林里就有三株。给修道院送去——她们欠我的人情，你帮她们还。」');
+          Game.qst('mag1',1);setF('magQ');
+          return node('「森林的空地上，找发光的叶子。」',[{t:'领命。',fn:null}]);
+        }});
+      }else if(!(G.quests.mag1&&G.quests.mag1.done)&&(G.flags.herbCount||0)>=3){
+        opts.push({t:'交付三株银叶草',fn:()=>{
+          removeItem('herb');removeItem('herb');removeItem('herb');
+          Game.qdone('mag1');gainXp(250);gainGold(60);giveItem('potion_greater',2);
+          Game.favAdd('church',8);
+          return node('「干得好。药我送去了，人情你收着——这几瓶药水给你。」',[{t:'（获得强效治疗药水×2）',fn:null}]);
+        }});
+      }
+      opts.push({t:'告辞。',fn:null});
+      return node('麦格眯起眼：「草药不骗人，人才骗人。买药吗，年轻人？」',opts);
+    }},
+  /* ---- 吟游诗人 芬恩 ---- */
+  finn:{name:'吟游诗人 芬恩',loc:'newmoon',bio:'流浪诗人，鲁特琴上有星陨之夜的刮痕。',
+    root(){
+      const opts=[];
+      if(!f('finnQ')){
+        opts.push({t:'「你在找什么？」',fn:()=>{
+          Game.log('芬恩拨了个走调的音：「民谣残页——星陨之夜我的琴谱被风吹散了。凑齐三页，我为你写一首传奇。」');
+          Game.qst('finn1',1);setF('finnQ');
+          return node('「它们散落在路上、林间、以及旅人的口袋里。」',[{t:'领命。',fn:null}]);
+        }});
+      }else if(!(G.quests.finn1&&G.quests.finn1.done)&&(G.flags.pageCount||0)>=3){
+        opts.push({t:'交付三页残页',fn:()=>{
+          removeItem('page');removeItem('page');removeItem('page');
+          Game.qdone('finn1');gainXp(300);setF('luckcharm');giveItem('luckcharm');
+          Game.log('芬恩连夜谱成《星陨行者》。你感到灵感涌动——所有检定+1！','gain');
+          return node('「这首歌会跟着你走遍位面。它叫《星陨行者》。」',[{t:'（获得灵感徽章）',fn:null}]);
+        }});
+      }
+      opts.push({t:'听传闻（5金币，随机传闻）',fn:()=>{
+        if(G.gold<5){Game.log('金币不足。');return;}
+        gainGold(-5);
+        Game.log('芬恩低唱：'+R.pick(RUMORS));
+      }});
+      opts.push({t:'告辞。',fn:null});
+      return node('芬恩抱着鲁特琴：「星陨是灾难，也是素材。'+G.name+'，你的故事值几个金币？」',opts);
+    }},
+  /* ---- 游侠 艾拉（霜脊哨塔） ---- */
+  ella:{name:'游侠 艾拉',loc:'frosttower',bio:'边境游侠，弓弦上系着狼牙。',
+    root(){
+      const opts=[];
+      if(!f('ellaQ')){
+        opts.push({t:'「塔上的狼烟是为了什么？」',fn:()=>{
+          Game.log('艾拉递给你一张兽皮地图：「霜脊的雪怪踩碎了矿队，也堵死了北方的猎道。帮我对付它，我的弓归你。」');
+          Game.qst('ella1',1);setF('ellaQ');
+          return node('「它就在哨塔北边的雪原上。小心它的寒颤吼。」',[{t:'领命。',fn:null}]);
+        }});
+      }else if(!(G.quests.ella1&&G.quests.ella1.done)){
+        if(f('yetiDead')){
+          opts.push({t:'「雪怪已除。」',fn:()=>{
+            Game.qdone('ella1');gainXp(350);giveItem('frostbrand');
+            Game.log('艾拉卸下背上的长弓：「霜牙长弓，一箭封喉。现在它是你的了。」','gain');
+            return node('「北方的猎道重开了。替我谢谢你的剑——或者弓。」',[{t:'（获得霜牙长弓）',fn:null}]);
+          }});
+        }else opts.push({t:'「雪怪还没解决。」',fn:()=>Game.log('艾拉指了指北边的雪原：「它在等你。」')});
+      }
+      opts.push({t:'休整（免费短休）',fn:()=>{shortRest(true);}});
+      opts.push({t:'告辞。',fn:null});
+      return node('艾拉擦着箭簇：「霜脊只讲两件事：冷，和活下来。'+G.name+'，你是来帮忙的？」',opts);
+    }},
+  /* ---- 隐士 米尔顿 ---- */
+  milton:{name:'隐士 米尔顿',loc:'hermit',bio:'前宫廷占星师，因坚持「星星会坠落」而被放逐。',
+    root(){
+      const opts=[];
+      if(!f('miltonLore')){
+        opts.push({t:'「你知道星陨的真相？」',fn:()=>{
+          setF('miltonLore');gainXp(200);
+          Game.log('米尔顿展开星图：「那不是星星，是位面之『锚』。锚沉了，诸界就开始互相渗透。四枚碎片能重铸锚——或者，把它锻成王冠。选择在你。」');
+          return node('「石阵知道坐标。智力够的话，问问它。」',[{t:'（获得200经验）',fn:null}]);
+        }});
+      }else{
+        opts.push({t:'请教位面知识（回复生命+传闻）',fn:()=>{
+          G.hp=Math.min(G.hpMax,G.hp+R.roll('2d8'));Game.log(R.pick(RUMORS));
+          return node('「记住：每一次检定都是命运在听你说话。」',[{t:'告辞。',fn:null}]);
+        }});
+      }
+      opts.push({t:'告辞。',fn:null});
+      return node('米尔顿头也不抬地调着星盘：「占星师的晚年只有两个客人：风，和过去的自己。」',opts);
+    }},
+  /* ---- 守门人 卡尔姆（星陨坑） ---- */
+  calm:{name:'守门人 卡尔姆',loc:'crater',bio:'星陨坑的守望者，教会的最后一名门卫。面甲下的脸没人见过。',
+    root(){
+      const opts=[];
+      const gates=[
+        ['astralUnlocked','星界','a_stravel'],['elementalUnlocked','元素位面','e_travel'],
+        ['shadowUnlocked','幽影位面','s_travel'],['feyUnlocked','翡翠荒野','f_travel'],
+      ];
+      gates.forEach(([flag,nm,act])=>{
+        opts.push({t:'前往【'+nm+'】',cond:()=>f(flag)&&G.plane==='material',fn:()=>{Dlg.close();travelTo(act==='a_stravel'?'astral':act==='e_travel'?'elemental':act==='s_travel'?'shadow':'fey');}});
+      });
+      if(G.plane==='material'){
+        if(G.shards>=4){
+          opts.push({t:'登上星核祭坛（终局抉择）',fn:()=>{Dlg.close();finaleDialog();}});
+        }else{
+          opts.push({t:'「祭坛还需要什么？」',fn:()=>Game.log('卡尔姆面甲后的声音毫无波澜：「四枚碎片。你持有 '+G.shards+' 枚。门会数。」')});
+        }
+      }
+      if(G.plane!=='material'){
+        opts.push({t:'返回主物质位面',fn:()=>{Dlg.close();travelTo('material');}});
+      }
+      opts.push({t:'告辞。',fn:null});
+      return node('卡尔姆持戟立于坑沿：「门后是四个天地的碎片。'+G.name+'，门只对拿着钥匙的人开。」',opts);
+    }},
+};
+
+/* 技能检定对话选项 */
+function skillCheckOpt(t,skill,dc,ok,fail){
+  return {t:t+'（'+skill+' DC'+dc+'）',fn:()=>{
+    const r=Game.check(skill,dc);
+    if(r.ok){ok&&ok();}else{fail&&fail();}
+  }};
+}
+
+/* =====================================================
+   任务数据
+===================================================== */
+const QUESTS={
+  m1:{n:'星陨之夜',type:'主线',stages:['与镇长艾德温谈谈','听完星陨的真相','接受指引（完成）']},
+  m2:{n:'四钥之门',type:'主线',stages:['前往星陨坑见守门人卡尔姆','取得四大阵营的信任，获得位面通行权','集齐四枚星核碎片（%s/4）','登上星核祭坛，书写终局']},
+  m3:{n:'星核碎片',type:'主线',stages:['从四大位面取回星核碎片','碎片收集进行中（%s/4）','碎片齐鸣，回到星陨坑']},
+  church1:{n:'亡灵之夜（星辉教会）',type:'阵营',stages:['在幽影沼泽消灭5只亡灵（%d/5）','向塞拉菲娜复命']},
+  ash1:{n:'雪怪与矿石（灰烬兄弟会）',type:'阵营',stages:['击杀霜脊雪怪并寻回星铁矿石','向瓦尔克复命']},
+  shadow1:{n:'渡口的影子（幽影议会）',type:'阵营',stages:['前往渡口查看失联商队','向奈莎复命']},
+  trade1:{n:'失踪的商队（自由商盟）',type:'阵营',stages:['前往渡口击退土匪','向菲娜复命']},
+  bloom1:{n:'星铁矿石（布洛姆）',type:'支线',stages:['寻得一块星铁矿石（霜脊山区/遭遇掉落）','交付给布洛姆']},
+  mag1:{n:'银叶草（老麦格）',type:'支线',stages:['在迷雾森林采集3株银叶草（%d/3）','交付给老麦格']},
+  finn1:{n:'民谣残页（芬恩）',type:'支线',stages:['寻回3页民谣残页（野外事件掉落）','交付给芬恩']},
+  ella1:{n:'霜脊的雪怪（艾拉）',type:'支线',stages:['击杀霜脊雪怪','向艾拉复命']},
+  stones:{n:'石阵的坐标',type:'支线',stages:['在古老石阵解读位面坐标（智力DC14）']},
+  orb:{n:'龙魂低语',type:'支线',stages:['探索龙裔废墟，寻得龙息宝珠']},
+};
+function questText(id){
+  const q=QUESTS[id],st=G.quests[id];
+  if(!st||st.done&&q.stages.length<=1)return q.n;
+  let s=q.stages[st.done?q.stages.length-1:(st.st||0)]||q.stages[0];
+  s=s.replace('%s',G.shards).replace('%d',q.n.includes('银叶草')?(G.flags.herbCount||0):q.n.includes('亡灵')?(G.flags.undeadKills||0):(G.flags.pageCount||0));
+  return q.n+'：'+s;
+}
+
+/* =====================================================
+   结局
+===================================================== */
+const ENDINGS={
+  sky:{n:'结局一 · 天穹重铸',cond:()=>G.shards>=4&&G.fav.church>=60,
+    txt:'你将四枚碎片按圣徽的轨迹嵌入祭坛。塞拉菲娜的祷词顺着星辉垂落，裂口如伤口般缓缓愈合。\n天空重新完整的那一夜，修道院的钟敲响了七声——这一次，是人为它敲的。\n人们说，星辉教会从此多了一位不领圣俸的守护者，而你的名字被写进了圣典的空白页。'},
+  crown:{n:'结局二 · 星辰为冠',cond:()=>G.shards>=4&&G.fav.ash>=60,
+    txt:'你没有修复天空。你把碎片碾碎，饮下了那道光。\n灰烬要塞的熔炉彻夜未熄。当瓦尔克单膝跪地时，他知道，兄弟会等来了能把力量握在手里的人。\n诸位面的门没有关上——它们成了你的疆域。史书会称这个时代为「星冠纪元」，而史官用的每一个字，都是你赏的。'},
+  night:{n:'结局三 · 永夜之幕',cond:()=>G.shards>=4&&G.fav.shadow>=60,
+    txt:'碎片在奈莎的掌心融成一泓黑水。她把它举过头顶，影子先一步落满了大地。\n诸位面在永夜中合一——没有太阳，也就没有争夺太阳的战争。幽影议会编织的秩序安静、平等，且永不散场。\n有人怀念日出。但更多的人承认：夜幕之下，至少人人看得很清楚。'},
+  gold:{n:'结局四 · 黄金纪元',cond:()=>G.shards>=4&&G.fav.trade>=60&&G.gold>=3000,
+    txt:'「四枚碎片，四个市场。」菲娜的算盘打得噼啪作响。\n你没有修复或独占星核——你把它拆成了一份份『位面通行契』，由商盟独家承销。裂口成了关税站，诸界成了供应链。\n后世的经济学教科书将这一章命名为：黄金纪元。首章署名是你，末章的脚注也是。'},
+  free:{n:'结局五 · 万象归一',cond:()=>true,
+    txt:'你松开了手。\n碎片没有飞向祭坛，而是散入四方——门扉大敞，诸位面如潮水般交融：星海漫过麦田，火焰在雪原上开出花，翡翠的藤蔓爬满幽影的城墙。\n这是个再没有「正常」的世界。有人说这是灾难，有人说这是自由。而你转身走进新世界的喧哗里，像走进一场未命名的盛宴。'},
+  seal:{n:'结局六 · 以身为烛',cond:()=>true,
+    txt:'祭坛需要的不只是碎片，还需要一个自愿的锚。\n你走向裂口中央，把碎片按进自己的胸膛。光从你的指缝、眼眶、心跳里满溢出来——位面壁垒以你为轴重新闭合。\n天空愈合了。新月镇立起一座没有名字的石像，孩子们往它手里放野花。夜里最亮的那颗星，据说会眨眼。'},
+};
+
+/* =====================================================
+   商店
+===================================================== */
+const SHOPS={
+  smith:{n:'布洛姆的锻炉',list:['longsword','battleaxe','greatsword','shortbow','leather','studded','chainshirt','shield','plate']},
+  herb:{n:'老麦格的药篮',list:['potion_heal','potion_greater','potion_fire']},
+  trade:{n:'商盟货栈',list:['potion_heal','scroll_magic','shortbow','longbow','leather','studded','dragonorb']},
+  shadowmarket:{n:'影都黑市',list:['potion_greater','potion_fire','greatsword']},
+};
+function openShop(shopId){
+  const s=SHOPS[shopId];
+  let html='<h3 class="text-lg font-bold text-ink mb-2">'+esc(s.n)+'</h3>';
+  html+='<div class="text-xs text-parch-700 mb-2">你的金币：'+G.gold+'</div><div class="space-y-1">';
+  s.list.forEach(id=>{
+    const it=ITEMS[id];
+    html+='<div class="flex items-center gap-2 card"><div class="flex-1"><b>'+esc(it.n)+'</b> <span class="text-xs text-parch-600">'+(it.desc||'')+'</span></div><div class="text-xs">'+it.price+'金</div><button class="btn" onclick="buyItem(\''+shopId+'\',\''+id+'\')">买</button></div>';
+  });
+  html+='</div><div class="mt-3 text-xs text-parch-600">出售：背包中的装备与药水按半价回收（在背包页点击出售）。</div>';
+  html+='<div class="text-right mt-3"><button class="btn" onclick="closeModal()">离开</button></div>';
+  openModal(html);
+}
+function buyItem(shopId,id){
+  const it=ITEMS[id];
+  if(G.gold<it.price){toast('金币不足');return;}
+  gainGold(-it.price);giveItem(id);SFX.play('coin');
+  if(shopId==='trade')Game.favAdd('trade',1);
+  openShop(shopId);
+  renderStory();
+}
+window.buyItem=buyItem;
+
+/* =====================================================
+   对话渲染
+===================================================== */
+const Dlg={
+  active:false,npcId:null,node:null,
+  open(id){
+    this.active=true;this.npcId=id;this.node=NPCS[id].root();
+    switchTab('story');SFX.play('open');
+  },
+  close(){this.active=false;this.node=null;renderStory();},
+  pick(i){
+    const o=this.node.opts.filter(o=>!o.cond||o.cond())[i];
+    if(!o)return;
+    SFX.play('click');
+    Game.remember(this.npcId,o.t.replace(/（.*?）/,'').slice(0,30));
+    const r=o.fn?o.fn():undefined;
+    if(r&&r.t!==undefined){this.node=r;renderStory();}
+    else this.close();
+  }
+};
+function renderDialogue(){
+  const npc=NPCS[Dlg.npcId];
+  let html='<div class="card mb-2"><div class="flex justify-between"><b class="text-blood">'+esc(npc.name)+'</b><span class="text-xs text-parch-600">'+esc(npc.bio||'')+'</span></div></div>';
+  html+='<div class="dlg-text mb-3">'+esc(Dlg.node.t).replace(/\n/g,'<br>')+'</div>';
+  const opts=Dlg.node.opts.filter(o=>!o.cond||o.cond());
+  html+='<div class="space-y-1">';
+  opts.forEach((o,i)=>{
+    html+='<button class="btn w-full text-left" onclick="Dlg.pick('+i+')">▸ '+esc(o.t)+'</button>';
+  });
+  html+='</div>';
+  return html;
+}
+
+/* =====================================================
+   战斗（网格回合制，DND5E 规则）
+===================================================== */
+const Combat={
+  active:false,units:[],order:[],turn:0,round:1,arena:null,
+  phase:'move',moved:false,acted:false,reach:null,curSel:null,retreatedPos:null,
+  onWin:null,intro:'',theme:'plains',unitSeq:0,
+
+  start(cfg){
+    // cfg: {monsters:[[id,count]...], intro, onWin, theme, ally?}
+    if(this.active)return;
+    this.active=true;this.onWin=cfg.onWin||null;this.intro=cfg.intro||'';
+    this.theme=cfg.theme||regionAt(G.x,G.y).id;
+    this.retreatedPos={x:G.x,y:G.y};
+    this.arena=this.buildArena(this.theme);
+    this.units=[];this.turn=0;this.round=1;this.moved=false;this.acted=false;this.phase='move';this.curSel=null;
+    // 玩家单位
+    this.units.push(this.makePlayerUnit());
+    // 敌人
+    (cfg.monsters||[]).forEach(([id,cnt])=>{
+      for(let i=0;i<cnt;i++){
+        const m=MONSTERS[id];
+        if(!m)continue;
+        let x,y,tries=0;
+        do{x=R.ri(this.arena.w-4,this.arena.w-1);y=R.ri(0,this.arena.h-1);tries++;}
+        while(tries<30&&(this.arena.t[idx(x,y,this.arena.w)]===undefined||!TILE_PASS[this.arena.t[idx(x,y,this.arena.w)]]||this.units.some(u=>u.x===x&&u.y===y)));
+        this.units.push({uid:'e'+(++this.unitSeq),tid:id,name:m.n+(cnt>1?('·'+i+1):''),side:'e',m:m,hp:m.hp,hpMax:m.hp,ac:m.ac,speed:Math.round((m.spd||30)/5),x,y,cond:{},oaDone:false});
+      }
+    });
+    // 先攻
+    this.units.forEach(u=>{
+      u.init=R.rollD20(u.player?mod('dex'):Math.floor(((u.m.spd||30)-10)/2),0).total;
+    });
+    this.order=[...this.units].sort((a,b)=>b.init-a.init).map(u=>u.uid);
+    Game.log('—— 战斗开始 ——','combat');
+    if(this.intro)Game.log(this.intro,'combat');
+    this.order.forEach(uid=>{const u=this.units.find(x=>x.uid===uid);Game.log('先攻 · '+u.name+'：'+u.init,'combat');});
+    if(scene)scene.enterCombat();
+    this.showBar();
+    renderStory();
+    this.beginTurn();
+  },
+  makePlayerUnit(){
+    const u={uid:'p',player:true,name:G.name,side:'p',hp:G.hp,hpMax:G.hpMax,ac:computeAC(),speed:6,x:2,y:Math.floor(this.arena.h/2),cond:{},oaDone:false};
+    u.weapons=this.playerWeapons();
+    return u;
+  },
+  playerWeapons(){
+    const list=[];
+    const wid=G.equip.weapon||'dagger';
+    const w=ITEMS[wid];
+    const ab=w.ranged?'dex':(w.fin?Math.max(mod('str'),mod('dex')):mod('str'));
+    list.push({id:wid,n:w.n,dmg:w.dmg,rng:w.rng||1,tb:prof()+ab,dmgMod:ab,ranged:!!w.ranged,magic:!!w.magic});
+    if(G.equip.weapon!=='dagger')list.push({id:'dagger',n:'匕首',dmg:'1d4',rng:1,tb:prof()+Math.max(mod('str'),mod('dex')),dmgMod:Math.max(mod('str'),mod('dex')),fin:1});
+    // 龙息
+    if(G.race==='dragonborn'&&!G.breathUsed)list.push({id:'breath',n:'龙息',special:'breath'});
+    return list;
+  },
+  buildArena(theme){
+    const w=13,h=9;
+    const base={astral:12,elemental:12,shadow:12,fey:12}[theme]!==undefined?12:0;
+    const t=new Array(w*h).fill(base);
+    const obst={forest:1,marsh:6,frost:2,ashen:8,crater:2,road:2,plains:2,astral:2,elemental:8,shadow:3,fey:1}[theme]||2;
+    for(let i=0;i<10;i++){
+      const x=R.ri(3,w-2),y=R.ri(0,h-1);
+      if(!(x===2&&y===Math.floor(h/2)))t[idx(x,y,w)]=obst;
+    }
+    return {w,h,t};
+  },
+  unit(u){return this.units.find(x=>x.uid===u);},
+  occ(exclude){
+    const s=new Set();
+    this.units.forEach(u=>{if(!u.dead&&u.uid!==exclude)s.add(u.x+','+u.y);});
+    return s;
+  },
+  bfs(unit,maxSteps){
+    const {w,h,t}=this.arena;
+    const dist={},prev={},q=[[unit.x,unit.y]];
+    dist[unit.x+','+unit.y]=0;
+    while(q.length){
+      const [cx,cy]=q.shift();const d0=dist[cx+','+cy];
+      if(d0>=maxSteps)continue;
+      for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const nx=cx+dx,ny=cy+dy,k=nx+','+ny;
+        if(nx<0||ny<0||nx>=w||ny>=h)continue;
+        if(!TILE_PASS[t[ny*w+nx]])continue;
+        if(this.occ(unit.uid).has(k))continue;
+        if(dist[k]!==undefined)continue;
+        dist[k]=d0+1;prev[k]=cx+','+cy;q.push([nx,ny]);
+      }
+    }
+    return {dist,prev};
+  },
+  adjacentEnemies(u){
+    return this.units.filter(e=>!e.dead&&e.side!==u.side&&Math.abs(e.x-u.x)+Math.abs(e.y-u.y)===1);
+  },
+  distance(a,b){return Math.abs(a.x-b.x)+Math.abs(a.y-b.y);},
+
+  beginTurn(){
+    if(!this.active)return;
+    const u=this.unit(this.order[this.turn]);
+    if(!u||u.dead){this.nextTurn();return;}
+    u.oaDone=false;
+    if(u.side==='e'){this.enemyAct(u);return;}
+    // 玩家回合
+    this.moved=false;this.acted=false;this.phase='move';this.reach=null;
+    if(u.hp<=0){this.deathSave(u);return;}
+    // 回合开始：护盾/印记衰减
+    if(u.cond.shield){delete u.cond.shield;Game.log('护盾术效果消散。','roll');}
+    this.showBar();
+  },
+  nextTurn(){
+    this.turn++;
+    if(this.turn>=this.order.length){this.turn=0;this.round++;}
+    this.beginTurn();
+  },
+  /* ---- 敌人AI ---- */
+  enemyAct(u){
+    if(u.m.tag&&u.m.tag==='undead'&&(u.m.n==='暗影'||u.m.n==='幽灵')&&G.weather==='clear'&&isDaytime()&&G.plane==='material'){
+      Game.log(u.name+' 在日光下畏缩，退散了！','combat');
+      u.dead=true;this.checkEnd();return;
+    }
+    if(u.hp<=0){this.nextTurn();return;}
+    const p=this.units.find(x=>x.uid==='p'&&!x.dead);
+    if(!p||p.hp<=0){ // 玩家倒地：过轮
+      Game.log(u.name+' 逡巡不前，等待你的心跳停下……','combat');
+      this.showBar();
+      setTimeout(()=>this.nextTurn(),600);
+      return;
+    }
+    const acts=[];
+    // 呼吸吐息
+    if(u.m.breath&&this.round%u.m.breath.cool===0){
+      acts.push(()=>this.enemyBreath(u,p));
+    }
+    // 移动+攻击
+    acts.push(()=>{
+      const atk=this.pickAttack(u,p);
+      const need=atk.rng||1;
+      let d=this.distance(u,p);
+      if(d>need){
+        const reach=this.bfs(u,u.speed);
+        // 找到距玩家 need 内的最近可站格
+        let best=null,bd=99;
+        for(const k in reach.dist){
+          const [x,y]=k.split(',').map(Number);
+          const dd=Math.abs(x-p.x)+Math.abs(y-p.y);
+          if(dd<=need&&dd<bd){bd=dd;best=[x,y];}
+        }
+        if(!best){ // 靠近
+          let bd2=99;
+          for(const k in reach.dist){
+            const [x,y]=k.split(',').map(Number);
+            const dd=Math.abs(x-p.x)+Math.abs(y-p.y);
+            if(dd<bd2){bd2=dd;best=[x,y];}
+          }
+        }
+        if(best)this.moveAlong(u,best[0],best[1],reach.prev);
+      }
+      d=this.distance(u,p);
+      if(d<=(atk.rng||1)){
+        // 双持/多次攻击
+        const times=u.m.two?2:1;
+        for(let i=0;i<times;i++)this.attack(u,p,atk);
+      }else Game.log(u.name+' 逼近中……','combat');
+    });
+    let i=0;
+    const run=()=>{if(!this.active)return;if(i<acts.length){acts[i++]();if(this.active&&!this.checkEnd())setTimeout(run,350);}else{this.showBar();setTimeout(()=>this.nextTurn(),400);}};
+    run();
+  },
+  pickAttack(u,target){
+    const list=u.m.atk;
+    const d=this.distance(u,target);
+    let best=null,bp=-1;
+    list.forEach(a=>{
+      const rng=a.rng||1;
+      let p=rng>=d?10:0;
+      if(a.dmg&&rng>=d)p+=parseInt(a.dmg)+2;
+      if(p>bp){bp=p;best=a;}
+    });
+    return best||list[0];
+  },
+  enemyBreath(u,p){
+    const b=u.m.breath;
+    Game.log(u.name+' 释放【'+b.name+'】！','combat');
+    SFX.play('spell');
+    const inArea=this.units.filter(t=>!t.dead&&t.side!==u.side&&this.distance(u,t)<=3);
+    inArea.forEach(t=>{
+      const hitSave=t.player?Game.saveThrow(b.abil,b.dc):R.rollD20(2,0).total>=b.dc;
+      let dmg=R.roll(b.dmg);
+      if(hitSave&&b.half)dmg=Math.floor(dmg/2);
+      if(hitSave)Game.log(t.name+' 通过豁免，伤害减半。','roll');
+      this.applyDamage(t,dmg,b.type,u);
+    });
+  },
+  /* ---- 移动（含借机攻击） ---- */
+  moveAlong(u,tx,ty,prev){
+    // 重构路径
+    const path=[];let k=tx+','+ty;
+    while(k&&k!==u.x+','+u.y){const [x,y]=k.split(',').map(Number);path.unshift([x,y]);k=prev[k];}
+    for(const [x,y] of path){
+      const wasAdj=this.adjacentEnemies(u);
+      u.x=x;u.y=y;
+      if(u.player&&!u.oaDone){
+        for(const e of wasAdj){
+          if(e.dead||e.oaDone)continue;
+          if(this.distance(e,u)>1){ // 离开其触及范围才引发借机
+            e.oaDone=true;
+            Game.log(e.name+' 的借机攻击！','combat');
+            this.attack(e,u,this.pickAttack(e,u));
+            if(u.hp<=0)break;
+          }
+        }
+      }
+      if(u.hp<=0)break;
+    }
+    if(scene)scene.drawCombat();
+  },
+  doMove(tx,ty){
+    const u=this.unit('p');
+    if(this.acted){Game.log('本回合已用动作，无法再移动（先移动或结束回合）。','combat');return;}
+    if(u.cond.grappled){Game.log('你被擒抱，无法移动！','combat');return;}
+    const reach=this.bfs(u,u.speed);
+    const k=tx+','+ty;
+    if(reach.dist[k]===undefined){Game.log('移动范围不足（速度 '+u.speed*5+' 尺）。','combat');return;}
+    this.moveAlong(u,tx,ty,reach.prev);
+    this.moved=true;
+    this.showBar();
+  },
+  /* ---- 攻击 ---- */
+  attack(att,def,wpn){
+    if(!wpn){Game.log('没有可用的攻击方式。','combat');return;}
+    // 优势/劣势
+    let adv=0;
+    if(att.cond.invis)adv++;
+    if(def.cond.dodge)adv--;
+    if(def.cond.invis)adv--;
+    if(def.cond.prone&&!(wpn.ranged||wpn.rng>1))adv++;
+    if(att.cond.prone)adv--;
+    if(G.weather==='rain'&&(wpn.ranged||wpn.rng>1))adv--;
+    const atkName=wpn.name||wpn.n;
+    const tb=att.player?wpn.tb:(wpn.tb||0);
+    const r=R.rollD20(tb,adv);
+    if(att.player&&G.race==='halfling'&&r.nat===1&&G.luckReroll>0){G.luckReroll--;return this.attack(att,def,wpn);}
+    const label=att.player?'你':'';
+    Game.log((att.player?'你':att.name)+'使用【'+atkName+'】攻击'+(def.player?'你':def.name)+'：d20='+r.nat+(r.other?'/'+r.other:'')+' + '+tb+' = '+r.total+' vs AC '+def.ac,'combat');
+    if(r.nat===1){Game.log('—— 大失手！','combat');SFX.play('click');return;}
+    if(r.total<def.ac&&!r.crit){Game.log('—— 未命中。','combat');SFX.play('click');return;}
+    // 伤害
+    let dmg=R.roll(wpn.dmg);
+    if(att.player)dmg+=(wpn.dmgMod||0);
+    if(r.crit){dmg+=R.roll(wpn.dmg);Game.log('会心一击！伤害骰翻倍！','combat');SFX.play('crit');}
+    // 玩家附加
+    if(att.player){
+      if(def.cond.marked)dmg+=R.roll('1d6');
+      if(G.cls==='rogue'&&adv>0){
+        const sd=Math.floor((G.level+1)/2);
+        dmg+=R.roll(sd+'d6');
+        Game.log('偷袭！附加 '+sd+'d6 精准伤害。','combat');
+      }
+      if(wpn.id==='starblade')dmg+=R.roll('1d4');
+    }
+    this.applyDamage(def,dmg,wpn.type||'挥砍',att);
+  },
+  applyDamage(def,dmg,type,src){
+    if(def.hp<=0)return;
+    if(def.player&&type==='火焰'&&(G.race==='tiefling'||G.flags.fireRes===G.day))dmg=Math.floor(dmg/2);
+    def.hp-=dmg;
+    SFX.play('hit');
+    Game.log((def.player?'你':def.name)+'受到 '+dmg+' 点'+(type||'')+'伤害（HP '+Math.max(0,def.hp)+'/'+def.hpMax+'）','combat');
+    if(def.hp<=0){
+      if(def.player){
+        def.hp=0;
+        Game.log('你倒在了血泊中！每轮需进行死亡豁免。','combat');SFX.play('death');
+      }else{
+        def.dead=true;
+        Game.log(def.name+' 倒下了！','combat');
+        if(def.m.tag==='undead')G.flags.undeadKills=(G.flags.undeadKills||0)+1;
+        if(def.tid==='yeti')setF('yetiDead');
+        G.kills++;
+        this.checkEnd();
+      }
+    }
+    if(scene)scene.drawCombat();
+  },
+  checkEnd(){
+    if(!this.active)return false;
+    const enemies=this.units.filter(u=>u.side==='e'&&!u.dead);
+    if(enemies.length===0){
+      this.finish(true);
+      return true;
+    }
+    return false;
+  },
+  finish(victory){
+    this.active=false;
+    const pu=this.units.find(x=>x.uid==='p');
+    if(pu)G.hp=Math.max(0,pu.hp);
+    if(scene)scene.exitCombat();
+    if(victory){
+      let xp=0,gold=0;
+      this.units.filter(u=>u.side==='e').forEach(u=>{
+        xp+=MON_XP[u.m.cr]||50;
+        const [a,b]=u.m.loot||[0,0];gold+=R.ri(a,b);
+      });
+      Game.log('—— 战斗胜利！——','combat');
+      gainGold(gold);
+      if(gold>0)Game.log('搜刮战利品，得到 '+gold+' 金币。','gain');
+      gainXp(xp);
+      // 随机掉落
+      if(R.chance(.18))giveItem(R.pick(TREASURE_ITEMS));
+      const cb=this.onWin;this.onWin=null;
+      if(cb)cb();
+      autoSave();
+    }
+    if(scene)scene.refreshAll();
+    renderStory();renderTopbar();
+  },
+  retreat(){
+    const u=this.unit('p');
+    Game.log('你选择撤退！','combat');
+    this.adjacentEnemies(u).forEach(e=>{
+      if(!e.oaDone){e.oaDone=true;Game.log(e.name+' 的借机攻击！','combat');this.attack(e,u,this.pickAttack(e,u));}
+    });
+    if(u.hp<=0)return;
+    this.active=false;
+    const pu=this.units.find(x=>x.uid==='p');
+    if(pu)G.hp=Math.max(0,pu.hp);
+    if(scene)scene.exitCombat();
+    Game.log('你脱离了战斗。','combat');
+    this.units=[];
+    renderStory();
+  },
+  deathSave(u){
+    // 玩家死亡豁免
+    const s=R.d(20);
+    let msg;
+    if(s===20){u.hp=1;msg='自然20！你猛然睁开眼，恢复1点生命！';}
+    else if(s>=10){u.cond.dsucc=(u.cond.dsucc||0)+1;msg='成功（'+u.cond.dsucc+'/3）';}
+    else if(s===1){u.cond.dfail=(u.cond.dfail||0)+2;msg='大失败（失败'+u.cond.dfail+'/3）';}
+    else{u.cond.dfail=(u.cond.dfail||0)+1;msg='失败（'+u.cond.dfail+'/3）';}
+    Game.log('死亡豁免：d20='+s+' —— '+msg,'combat');
+    SFX.play('dice');
+    if(u.hp>0){this.showBar();return;}
+    if((u.cond.dfail||0)>=3){
+      this.active=false;
+      if(scene)scene.exitCombat();
+      Game.log('你的传说终结于第 '+G.day+' 天。','sys');
+      gameOverModal();
+      return;
+    }
+    if((u.cond.dsucc||0)>=3){
+      Game.log('你稳定了下来！挣扎着爬出战场……','combat');
+      u.hp=1;G.hp=1;
+      this.active=false;
+      if(scene)scene.exitCombat();
+      this.units=[];
+      renderStory();return;
+    }
+    this.showBar();
+    setTimeout(()=>this.nextTurn(),900);
+  },
+  /* ---- 玩家动作 ---- */
+  modeAtk(w){this.phase='atk';this.curSel=w;this.showBar();Game.log('选择攻击目标（点击敌人）。','combat');},
+  doAttackTarget(defUid){
+    const u=this.unit('p'),def=this.unit(defUid);
+    if(!def||def.dead)return;
+    const w=this.curSel;
+    const d=this.distance(u,def);
+    if(d>(w.rng||1)){Game.log('目标超出射程（'+(w.rng||1)*5+'尺）。','combat');return;}
+    this.acted=true;
+    this.attack(u,def,w);
+    this.phase='move';this.curSel=null;
+    if(!this.checkEnd())this.endPlayerTurn();
+  },
+  doCastSpell(spellId,targetUidOrPos){
+    const sp=SPELLS[spellId];
+    const u=this.unit('p');
+    if(!sp)return;
+    if(slotsAvail(sp.lvl)<=0&&sp.lvl>0){Game.log('没有可用的 '+sp.lvl+' 环法术位！','combat');return;}
+    const lvlUsed=sp.lvl>0?useSlot(sp.lvl):0;
+    G.spellsUsedNote=sp.n;
+    SFX.play('spell');
+    Game.log('你施展【'+sp.n+'】'+(lvlUsed>sp.lvl?'（'+lvlUsed+'环位）':'')+'。','combat');
+    if(sp.heal){
+      const amount=R.roll(sp.heal)+castMod();
+      u.hp=Math.min(u.hpMax,u.hp+amount);
+      Game.log('恢复 '+amount+' 点生命（HP '+u.hp+'/'+u.hpMax+'）。','gain');
+      SFX.play('heal');
+      G.hp=Math.min(G.hpMax,u.hp);
+    }else if(sp.ac){
+      u.cond.shield=true;u.ac+=5;
+      Game.log('护盾术！AC 暂时 +5。','combat');
+    }else if(sp.invis){
+      u.cond.invis=true;
+      Game.log('你从视野中消失了。','combat');
+    }else if(sp.mark){
+      Game.log('猎人印记生效：对目标伤害+1d6。选择目标。','combat');
+      this.phase='mark';this.curSel=sp;
+      this.showBar();return;
+    }else if(sp.rest){
+      delete u.cond.para;delete u.cond.charm;
+      Game.log('次级复原术：解除麻痹与魅惑。','combat');
+    }else if(sp.self){
+      Game.log('法术生效。','combat');
+    }else if(sp.area||sp.cone||sp.line){
+      // 范围法术：以最近敌人为中心/锥形
+      const targets=this.units.filter(t=>!t.dead&&t.side==='e'&&(sp.cone?this.distance(u,t)<=3:this.distance(u,t)<=sp.rng));
+      if(!targets.length){Game.log('范围内没有目标，法术落空。','combat');}
+      else{
+        Game.log((sp.area?'爆裂扩散':sp.cone?'锥形喷发':'电光疾驰')+'！','combat');
+        targets.forEach(t=>{
+          const saveOk=t.player?Game.saveThrow(sp.save,spellDC()):(R.rollD20(1,0).total+2)>=spellDC();
+          let dmg=R.roll(sp.dmg);
+          if(saveOk&&sp.half)dmg=Math.floor(dmg/2);
+          this.applyDamage(t,dmg,sp.type,u);
+        });
+      }
+    }else if(sp.save){
+      const t=this.unit(targetUidOrPos);
+      if(!t){Game.log('需要目标。','combat');return;}
+      const saveOk=t.player?Game.saveThrow(sp.save,spellDC()):(R.rollD20(1,0).total+2)>=spellDC();
+      let dmg=R.roll(sp.dmg);
+      if(sp.scal==='cantrip')dmg+=R.roll(Math.ceil(G.level/6)+'d6'); // 戏法成长简化
+      if(saveOk&&sp.half)dmg=Math.floor(dmg/2);
+      if(sp.charm&&!saveOk){t.cond.charm=1;Game.log(t.name+' 被魅惑！','combat');}
+      this.applyDamage(t,dmg,sp.type,u);
+    }else if(sp.atk){
+      const t=this.unit(targetUidOrPos);
+      if(!t){Game.log('需要目标。','combat');return;}
+      const rays=sp.rays||1;
+      for(let i=0;i<rays;i++){
+        const d=this.distance(u,t);
+        if(d>sp.rng){Game.log('目标超出射程。','combat');break;}
+        const r=R.rollD20(spellAtk(),t.cond.invis?-1:0);
+        Game.log('射线'+(i+1)+'：d20='+r.nat+' + '+spellAtk()+' = '+r.total+' vs AC '+t.ac,'combat');
+        if(r.total>=t.ac||r.crit){
+          let dmg=R.roll(sp.dmg);
+          if(r.crit)dmg+=R.roll(sp.dmg);
+          if(sp.scal==='cantrip')dmg+=R.roll(Math.ceil(G.level/6)+'d4');
+          this.applyDamage(t,dmg,sp.type,u);
+        }else Game.log('—— 未命中。','combat');
+      }
+    }else if(sp.auto){
+      const t=this.unit(targetUidOrPos)||this.nearestEnemy();
+      if(t){
+        let dmg=R.roll(sp.dmg);
+        this.applyDamage(t,dmg,sp.type,u);
+      }
+    }
+    G.hp=Math.min(u.hp,G.hpMax);
+    this.acted=true;this.phase='move';this.curSel=null;
+    if(scene)scene.drawCombat();
+    if(!this.checkEnd())this.endPlayerTurn();
+  },
+  nearestEnemy(){
+    const u=this.unit('p');
+    let best=null,bd=99;
+    this.units.forEach(t=>{if(t.side==='e'&&!t.dead){const d=this.distance(u,t);if(d<bd){bd=d;best=t;}}});
+    return best;
+  },
+  doMark(targetUid){
+    const t=this.unit(targetUid);
+    const u=this.unit('p');
+    if(!t||t.dead)return;
+    t.cond.marked=1;
+    Game.log('你将猎人印记烙在 '+t.name+' 身上。','combat');
+    this.acted=true;this.phase='move';this.curSel=null;
+    if(!this.checkEnd())this.endPlayerTurn();
+  },
+  useItemCombat(invIdx){
+    const it=G.inv[invIdx];
+    if(!it)return;
+    const item=ITEMS[it.id];
+    if(item.heal){
+      const u=this.unit('p');
+      const amount=R.roll(item.heal);
+      u.hp=Math.min(u.hpMax,u.hp+amount);G.hp=u.hp;
+      removeItem(it.id);
+      Game.log('你喝下【'+item.n+'】，恢复 '+amount+' 生命。','gain');SFX.play('heal');
+    }else if(item.cast){
+      const spId=item.cast;removeItem(it.id);
+      this.doCastSpell(spId);
+      return;
+    }else if(it.id==='dragonorb'){
+      const u=this.unit('p');
+      if(G.flags.orbUsedDay===G.day){Game.log('宝珠今日之力已耗尽。','combat');return;}
+      setF2('orbUsedDay',G.day);
+      Game.log('龙息宝珠喷吐烈焰！','combat');
+      this.units.filter(t=>!t.dead&&t.side==='e'&&this.distance(u,t)<=3).forEach(t=>{
+        const ok=t.player?false:R.rollD20(2,0).total>=13;
+        let dmg=R.roll('4d6');if(ok)dmg=Math.floor(dmg/2);
+        this.applyDamage(t,dmg,'火焰',u);
+      });
+    }else{Game.log('该物品无法在战斗中使用。','combat');return;}
+    this.acted=true;
+    if(!this.checkEnd())this.endPlayerTurn();
+  },
+  dodge(){
+    const u=this.unit('p');
+    u.cond.dodge=true;
+    Game.log('你摆出防御姿态（受到的攻击具有劣势）。','combat');
+    this.acted=true;
+    this.endPlayerTurn();
+  },
+  dash(){
+    this.phase='move';this.moved=false;
+    const u=this.unit('p');
+    u.speed*=2;
+    Game.log('疾行！本回合移动速度翻倍。','combat');
+    this.acted=true; // 疾行占用动作
+    this.showBar();
+  },
+  disengage(){
+    const u=this.unit('p');
+    u.oaDone=true; // 简化：本轮不再受借机
+    Game.log('你谨慎地脱离接触（不会引发借机攻击）。','combat');
+    this.acted=true;
+    this.showBar();
+  },
+  secondWind(){
+    const u=this.unit('p');
+    if(G.flags.swUsed===G.day){Game.log('回气已用过（需短休恢复）。','combat');return;}
+    const amount=R.roll('1d10')+G.level;
+    u.hp=Math.min(u.hpMax,u.hp+amount);G.hp=u.hp;
+    setF2('swUsed',G.day);
+    Game.log('回气！恢复 '+amount+' 生命。','gain');SFX.play('heal');
+    this.acted=true;
+    this.endPlayerTurn();
+  },
+  healLay(){
+    const u=this.unit('p');
+    if(G.healPool<=0){Game.log('圣疗生命池已空（长休恢复）。','combat');return;}
+    const amount=Math.min(G.healPool,5*G.level);
+    u.hp=Math.min(u.hpMax,u.hp+amount);G.hp=u.hp;G.healPool-=amount;
+    Game.log('圣疗！恢复 '+amount+' 生命（剩余池 '+G.healPool+'）。','gain');SFX.play('heal');
+    this.acted=true;
+    this.endPlayerTurn();
+  },
+  smite(){
+    const u=this.unit('p');
+    if(slotsAvail(1)<=0){Game.log('没有1环法术位可用！','combat');return;}
+    this.phase='smite';this.curSel={id:'smite',n:'神圣斩击',dmg:'1d8',rng:1};
+    Game.log('选择挥击目标：命中后消耗1环位，附加+2d8光耀伤害。','combat');
+    this.showBar();
+  },
+  doSmiteTarget(defUid){
+    const u=this.unit('p'),def=this.unit(defUid);
+    if(!def||def.dead)return;
+    if(this.distance(u,def)>1){Game.log('目标不在近战范围。','combat');return;}
+    useSlot(1);
+    this.acted=true;
+    // 先普攻
+    const w=this.playerWeapons()[0];
+    const preHp=def.hp;
+    this.attack(u,def,w);
+    if(def.hp<preHp){
+      const dmg=R.roll('2d8');
+      this.applyDamage(def,dmg,'光耀',u);
+      Game.log('神圣斩击引爆！+2d8 光耀伤害。','combat');
+    }else Game.log('神圣斩击落空，法术位已消耗。','combat');
+    this.phase='move';this.curSel=null;
+    if(!this.checkEnd())this.endPlayerTurn();
+  },
+  breathAttack(){
+    const u=this.unit('p');
+    if(G.breathUsed){Game.log('龙息尚未恢复（短休恢复）。','combat');return;}
+    G.breathUsed=true;
+    const dc=8+prof()+mod('con');
+    const dice=(2+Math.floor(G.level/4))+'d6';
+    Game.log('你喷吐龙息！','combat');SFX.play('spell');
+    this.units.filter(t=>!t.dead&&t.side==='e'&&this.distance(u,t)<=2).forEach(t=>{
+      const ok=R.rollD20(2,0).total>=dc;
+      let dmg=R.roll(dice);if(ok)dmg=Math.floor(dmg/2);
+      this.applyDamage(t,dmg,'火焰',u);
+    });
+    this.acted=true;
+    if(!this.checkEnd())this.endPlayerTurn();
+  },
+  endPlayerTurn(){
+    const u=this.unit('p');
+    G.hp=u.hp;
+    delete u.cond.dodge;
+    if(scene)scene.drawCombat();
+    renderTopbar();
+    setTimeout(()=>this.nextTurn(),350);
+  },
+  /* ---- 战斗UI ---- */
+  showBar(){
+    if(!this.active)return;
+    const bar=$('combatBar');
+    bar.classList.remove('hidden');
+    const u=this.unit('p');
+    let html='<div class="flex flex-wrap items-center gap-2">';
+    // 单位卡
+    this.units.forEach(t=>{
+      if(t.dead)return;
+      const isP=t.side==='p';
+      const pct=Math.max(0,Math.round(t.hp/t.hpMax*100));
+      html+='<div class="card '+(t.uid==='p'?'sel':'')+'" style="min-width:120px;padding:4px 8px" data-uid="'+t.uid+'">'+
+        '<div class="text-xs font-bold '+(isP?'text-sage':'text-blood')+'">'+esc(t.name)+(t.cond.charm?' [魅惑]':'')+(t.cond.marked?' [印记]':'')+(t.cond.invis?' [隐形]':'')+'</div>'+
+        '<div class="hpbar mt-1"><div style="width:'+pct+'%"></div></div>'+
+        '<div class="text-[10px] text-parch-700">'+t.hp+'/'+t.hpMax+' · AC'+t.ac+'</div></div>';
+    });
+    html+='<div class="ml-auto text-xs text-parch-700">第'+this.round+'轮 · '+(this.unit(this.order[this.turn])||{}).name+'的回合</div>';
+    html+='</div>';
+    if(u&&u.hp>0&&this.unit(this.order[this.turn])===u){
+      html+='<div class="flex flex-wrap gap-1 mt-2">';
+      html+='<button class="btn '+(this.phase==='move'?'sel':'')+'" onclick="Combat.uiMove()">移动</button>';
+      // 武器攻击
+      (u.weapons||[]).forEach((w,i)=>{
+        if(w.special==='breath')html+='<button class="btn btn-red" onclick="Combat.breathAttack()">龙息</button>';
+        else html+='<button class="btn" onclick="Combat.modeAtk(Combat.playerWeapons()['+i+'])">'+esc(w.n)+'</button>';
+      });
+      // 法术
+      if(G.spells.length){
+        G.spells.forEach(sid=>{
+          const sp=SPELLS[sid];
+          const ok=sp.lvl===0||slotsAvail(sp.lvl)>0;
+          html+='<button class="btn btn-blue" '+(ok?'':'disabled')+' onclick="Combat.uiCast(\''+sid+'\')">'+esc(sp.n)+(sp.lvl>0?'('+sp.lvl+'环)':'')+'</button>';
+        });
+      }
+      if(G.cls==='paladin')html+='<button class="btn btn-blue" onclick="Combat.smite()">神圣斩击</button>';
+      if(G.cls==='fighter')html+='<button class="btn btn-green" onclick="Combat.secondWind()">回气</button>';
+      if(G.cls==='cleric')html+='<button class="btn btn-green" onclick="Combat.healLay()">圣疗('+G.healPool+')</button>';
+      // 药水
+      G.inv.forEach((it,i)=>{
+        if(ITEMS[it.id].heal)html+='<button class="btn btn-green" onclick="Combat.useItemCombat('+i+')">'+esc(ITEMS[it.id].n)+'</button>';
+      });
+      html+='<button class="btn" onclick="Combat.dodge()">躲避</button>';
+      html+='<button class="btn" onclick="Combat.disengage()">撤离姿态</button>';
+      html+='<button class="btn btn-red" onclick="Combat.retreat()">逃跑</button>';
+      html+='<button class="btn btn-red" onclick="Combat.endPlayerTurn()">结束回合</button>';
+      html+='</div>';
+      html+='<div class="text-xs text-parch-600 mt-1">'+(this.phase==='atk'?'点击敌人进行攻击（'+esc(this.curSel?this.curSel.n:'')+'）':this.phase==='cast'?'选择法术目标':this.phase==='mark'?'点击敌人施加猎人印记':this.phase==='smite'?'点击敌人进行神圣斩击':'点击可达格子移动（本次移动后仍可行动）')+'</div>';
+    }else{
+      html+='<div class="text-xs text-parch-700 mt-1">敌方回合……</div>';
+    }
+    bar.innerHTML=html;
+    if(scene)scene.drawCombat();
+  },
+  uiMove(){this.phase='move';this.curSel=null;this.showBar();},
+  uiCast(sid){this.phase='cast';this.curSel=sid;
+    const sp=SPELLS[sid];
+    if(sp.heal||sp.ac||sp.invis||sp.rest||sp.self){this.doCastSpell(sid);return;}
+    if(sp.auto){this.doCastSpell(sid,this.nearestEnemy()?this.nearestEnemy().uid:null);return;}
+    Game.log('点击目标施展【'+sp.n+'】。','combat');this.showBar();
+  },
+  onClick(tx,ty){
+    if(!this.active)return;
+    const u=this.unit('p');
+    if(!u||u.hp<=0)return;
+    if(this.unit(this.order[this.turn])!==u)return;
+    if(this.phase==='atk'&&this.curSel)return this.doAttackTarget(this.uidAt(tx,ty));
+    if(this.phase==='cast'&&this.curSel)return this.doCastSpell(this.curSel,this.uidAt(tx,ty));
+    if(this.phase==='mark'&&this.curSel)return this.doMark(this.uidAt(tx,ty));
+    if(this.phase==='smite'&&this.curSel)return this.doSmiteTarget(this.uidAt(tx,ty));
+    this.doMove(tx,ty);
+  },
+  uidAt(tx,ty){
+    const t=this.units.find(x=>!x.dead&&x.side==='e'&&x.x===tx&&x.y===ty);
+    return t?t.uid:null;
+  }
+};
+function setF2(k,v){G.flags[k]=v;}
+function isDaytime(){return G.time>=300&&G.time<1080;}
+window.Combat=Combat;
+
+/* =====================================================
+   探索移动
+===================================================== */
+function revealFog(){
+  const m=getMap(G.plane);
+  if(!G.fog[G.plane])initFog(G.plane);
+  const r=6+(RACES[G.race].dark?2:0)+(f('blessStar')?1:0);
+  for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+    const x=G.x+dx,y=G.y+dy;
+    if(x<0||y<0||x>=m.w||y>=m.h)continue;
+    if(dx*dx+dy*dy<=r*r)G.fog[G.plane][idx(x,y,m.w)]=1;
+  }
+}
+function rollWeather(){
+  const roll=Math.random();
+  if(G.plane==='material'){
+    G.weather=roll<.55?'clear':roll<.75?'rain':roll<.9?'fog':'storm';
+  }else if(G.plane==='astral')G.weather='clear';
+  else if(G.plane==='elemental')G.weather=roll<.5?'clear':'storm';
+  else if(G.plane==='shadow')G.weather='fog';
+  else G.weather='clear';
+}
+function timeTick(){
+  G.time+=10;
+  if(G.time>=1440){G.time-=1440;G.day++;G.days++;rollWeather();
+    Game.log('—— 第 '+G.day+' 天 · 天气：'+({clear:'晴',rain:'雨',fog:'雾',storm:'暴风雨'}[G.weather])+' ——','sys');
+    if(f('invested')){gainGold(50);Game.log('商盟分红 +50 金币。','gain');}
+    G.flags.orbUsedDay=0;
+  }
+}
+function tryMove(dx,dy){
+  if(Game.busy())return;
+  const m=getMap(G.plane);
+  const nx=G.x+dx,ny=G.y+dy;
+  if(nx<0||ny<0||nx>=m.w||ny>=m.h)return;
+  const t=m.t[idx(nx,ny,m.w)];
+  if(!TILE_PASS[t]){if(R.chance(.15))Game.log('前方是'+'无法通行的地形。');return;}
+  G.x=nx;G.y=ny;
+  SFX.play('move');
+  revealFog();timeTick();
+  if(G.encounterCd>0)G.encounterCd--;
+  // 地点触发
+  const loc=locAt(nx,ny);
+  if(loc){enterLoc(loc);renderAll();return;}
+  // 随机遭遇
+  if(G.encounterCd<=0&&rollEncounter())return;
+  // 野外小事件
+  if(R.chance(.045)){wildEvent();}
+  renderAll();
+}
+function wildEvent(){
+  const evs=['shrine','cache','trap','rumor'];
+  if(f('finnQ')&&(G.flags.pageCount||0)<3)evs.push('page','page');
+  if(f('magQ')&&(G.flags.herbCount||0)<3)evs.push('herb');
+  if(f('bloomQ')&&!hasItem('ore'))evs.push('ore');
+  const ev=R.pick(evs);
+  switch(ev){
+    case 'shrine':{
+      Game.log('路边有座荒废的小神龛。','sys');
+      const ok=Game.saveThrow('wis',10);
+      if(ok){G.hp=Math.min(G.hpMax,G.hp+R.roll('2d4+2'));Game.log('圣辉微光拂过，伤势缓解。','gain');SFX.play('heal');}
+      else Game.log('神龛沉默不语。');
+      renderTopbar();
+      break;}
+    case 'cache':{
+      Game.log('你发现了一处旅人遗落的行囊。','gain');
+      gainGold(R.ri(5,40));
+      if(R.chance(.3))giveItem(R.pick(TREASURE_ITEMS));
+      break;}
+    case 'trap':{
+      Game.log('脚下嘎吱一响——陷阱！','combat');
+      const ok=Game.saveThrow('dex',12);
+      if(!ok){
+        const dmg=R.roll('1d10');G.hp=Math.max(0,G.hp-dmg);
+        Game.log('尖刺造成 '+dmg+' 点穿刺伤害！','combat');
+        renderTopbar();
+        if(G.hp<=0){G.hp=0;gameOverModal();}
+      }else Game.log('你侧身避开了尖刺。');
+      break;}
+    case 'rumor':Game.log('路旁刻着褪色的字迹：'+R.pick(RUMORS),'sys');break;
+    case 'page':G.flags.pageCount=(G.flags.pageCount||0)+1;giveItem('page');break;
+    case 'herb':G.flags.herbCount=(G.flags.herbCount||0)+1;giveItem('herb');break;
+    case 'ore':giveItem('ore');break;
+  }
+}
+function rollEncounter(){
+  if(G.plane==='material'&&locAt(G.x,G.y))return false;
+  const reg=regionAt(G.x,G.y);
+  // 城镇与道路附近安全
+  if(G.plane==='material'){
+    for(const l of LOCS){if(l.plane==='material'&&Math.abs(l.x-G.x)+Math.abs(l.y-G.y)<=2)return false;}
+  }
+  let base=G.plane==='material'?0.09:0.13;
+  if(reg.id==='road')base=0.05;
+  if(G.cls==='ranger')base*=0.7;
+  if(!isDaytime())base*=1.8;
+  if(G.weather==='fog')base*=1.3;
+  if(G.weather==='rain')base*=0.8;
+  if(!R.chance(base))return false;
+  const table=G.plane==='material'?reg.enc:PLANE_ENC[G.plane];
+  if(!table)return false;
+  const pick=R.pick(table);
+  const cnt=R.ri(pick[1],pick[2]);
+  const names={goblin:'哥布林',wolf:'狼群',bandit:'土匪',skeleton:'骷髅',specter:'幽灵',ghoul:'食尸鬼',zombie:'僵尸群',shadow:'暗影',imp:'小恶魔',orog:'兽人战团',fire_elemental:'火元素',winterwolf:'冬狼',yeti:'雪怪',astral_raider:'星界掠夺者',fey_knight:'妖精骑士',spider:'蛛群',ice_elemental:'冰元素',wraith:'幽魂'};
+  const intros={
+    material:'「有什么东西在'+reg.n+'的'+(isDaytime()?'日光':'阴影')+'中移动——是'+(names[pick[0]]||pick[0])+'！」',
+    astral:'星海泛起涟漪，敌意的心灵贴近了……',
+    elemental:'元素之怒凝聚成形！',
+    shadow:'死者的低语骤然清晰！',
+    fey:'宴席的乐曲变调成了狩猎的号角！',
+  };
+  Combat.start({monsters:[[pick[0],cnt]],intro:intros[G.plane]||intros.material,theme:reg.id});
+  G.encounterCd=6;
+  return true;
+}
+function travelTo(plane){
+  if(plane===G.plane)return;
+  G.plane=plane;
+  const m=getMap(plane);
+  initFog(plane);
+  if(plane==='material'){G.x=40;G.y=7;}
+  else{G.x=3;G.y=20;}
+  revealFog();
+  rollWeather();
+  Game.log('你穿越位面之门，抵达【'+PLANES[plane].n+'】。','quest');
+  banner(PLANES[plane].n);
+  renderAll();
+  if(scene)scene.refreshAll();
+  autoSave();
+}
+function enterLoc(loc){
+  banner(loc.n+' · '+PLANES[loc.plane].n);
+  Game.log('【'+loc.n+'】'+loc.desc,'sys');
+  SFX.play('open');
+  // 特殊触发
+  if(loc.id==='ford'&&!f('fordSeen')){
+    setF('fordSeen');
+    Game.log('渡口一片狼藉。你在残骸中读到阴影里的真相：商队不是死于野兽——他们的影子先死了。','quest');
+    if(!(G.quests.shadow1&&G.quests.shadow1.done))Game.qst('shadow1',1);
+  }
+  showLocMenu(loc);
+}
+function showLocMenu(loc){
+  let acts=[];
+  // NPC
+  const npcsHere=Object.keys(NPCS).filter(k=>NPCS[k].loc===loc.id);
+  npcsHere.forEach(k=>{
+    if(loc.plane==='material'||k==='calm')acts.push({t:'与【'+NPCS[k].name+'】交谈',fn:()=>{closeModal();Dlg.open(k);}});
+  });
+  // 通用
+  if(loc.id==='newmoon'){
+    acts.push({t:'在旅店长休（10金币，恢复全部生命与法术位）',fn:()=>{closeModal();longRest(true);}});
+  }
+  if(loc.id==='frosttower'||loc.id==='hermit'||loc.id==='tradehall'||loc.id==='monastery'){
+    acts.push({t:'休整（短休）',fn:()=>{closeModal();shortRest(false);}});
+  }
+  if(loc.id==='f_spring'){
+    acts.push({t:'饮下治愈之泉（全恢复）',fn:()=>{closeModal();G.hp=G.hpMax;G.healPool=G.level*3;G.breathUsed=false;Game.log('泉水甘冽，你感到生机涌动。','gain');SFX.play('heal');renderTopbar();}});
+  }
+  // 探索点
+  if(loc.id==='stones'&&!f('stonesDone')){
+    acts.push({t:'解读石阵坐标（奥秘 DC14）',fn:()=>{
+      closeModal();
+      const r=Game.check('奥秘',14);
+      if(r.ok){setF('stonesDone');gainXp(500);setF('blessStar');Game.log('石阵齐鸣，星光沿你的手臂流过——你获得了【星辉印记】：所有检定+1！','gain');}
+      else{gainXp(100);Game.log('你抄录了部分刻文，剩下的需要更强的智识。','sys');}
+    }});
+  }
+  if(loc.id==='ruins'&&!f('orbDone')){
+    acts.push({t:'探索龙裔废墟（察觉 DC12）',fn:()=>{
+      closeModal();
+      const r=Game.check('察觉',12);
+      if(r.ok){setF('orbDone');giveItem('dragonorb');gainXp(400);Game.log('龙魂的低语指引你找到了【龙息宝珠】！','gain');}
+      else{gainXp(100);Game.log('废墟错综复杂，你差点被坍塌的石柱埋住。','sys');}
+    }});
+  }
+  if(loc.id==='deepforest'&&!f('forestLooted')){
+    acts.push({t:'搜索空地（生存 DC11）',fn:()=>{
+      closeModal();
+      const r=Game.check('生存',11);
+      if(r.ok){
+        setF('forestLooted');
+        G.flags.herbCount=(G.flags.herbCount||0)+3;
+        giveItem('herb',3);gainXp(150);
+        Game.log('你采到三株银叶草！','gain');
+      }else Game.log('你在密林中迷失了片刻。','sys');
+    }});
+  }
+  if(loc.id==='frosttower'&&!f('oreFound')){
+    acts.push({t:'搜索矿队失事处（调查 DC12）',fn:()=>{
+      closeModal();
+      const r=Game.check('调查',12);
+      if(r.ok){setF('oreFound');giveItem('ore');gainXp(150);Game.log('你从碎石中挖出一块星铁矿石！','gain');}
+      else Game.log('矿石可能埋在更深的雪下。','sys');
+    }});
+  }
+  if(loc.id==='ford'&&!f('fordCleared')&&f('tradeQ1')){
+    acts.push({t:'击退盘踞的土匪（战斗）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['bandit',2],['goblin',1]],intro:'土匪从渡船后涌出：「又一个送财宝的！」',
+        onWin:()=>{setF('fordCleared');gainXp(100);Game.log('土匪溃逃。现在可以向菲娜或奈莎复命了。','quest');}});
+    }});
+  }
+  if(loc.id==='crater'&&G.plane==='material'){
+    if(G.shards>=4)acts.push({t:'登上星核祭坛（终局）',fn:()=>{closeModal();finaleDialog();}});
+    else acts.push({t:'检查祭坛（需要4枚碎片）',fn:()=>{closeModal();Game.log('四道凹槽中只有 '+G.shards+' 枚碎片在发光。门扉沉默不语。');}});
+  }
+  // 位面场景
+  if(loc.id==='a_hulk'&&!f('shardA')){
+    acts.push({t:'直面星陨魔像（BOSS战）',fn:()=>{
+      closeModal();
+      const blessed=f('blessAstral');
+      Combat.start({monsters:[['star_golem',1]],intro:'星槎残骸中，锈蚀的巨像缓缓起身，核心正是星核碎片！'+(blessed?'塞拉菲娜的祝福让它迟疑了一瞬。':''),
+        onWin:()=>{setF('shardA');Game.addShard();Game.favAdd('church',10);}});
+    }});
+  }
+  if(loc.id==='e_temple'&&!f('shardE')){
+    acts.push({t:'挑战元素看守（BOSS战）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['fire_elemental',1],['ice_elemental',1]],intro:'「热与冷在此永争。」双元素转向了你。',
+        onWin:()=>{setF('shardE');Game.addShard();Game.favAdd('ash',10);}});
+    }});
+  }
+  if(loc.id==='s_corridor'&&!f('shardS')){
+    acts.push({t:'深入静默回廊（BOSS战）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['wraith',1],['shadow',2]],intro:'回廊尽头，幽魂们围着一枚发黑的碎片。',
+        onWin:()=>{setF('shardS');Game.addShard();Game.favAdd('shadow',10);}});
+    }});
+  }
+  if(loc.id==='f_tree'&&!f('shardF')){
+    acts.push({t:'出席永不散场的宴席',fn:()=>{
+      closeModal();
+      let html='<h3 class="text-lg font-bold mb-2">堕落妖精骑士</h3><p class="text-sm mb-3">骑士举杯：「陌生的客人！留下你的名字、你的影子，或者——一场值得记住的决斗。」</p>'+
+      '<button class="btn w-full mb-1" onclick="feyFight()">接受决斗（战斗）</button>'+
+      '<button class="btn w-full mb-1" onclick="feyCheat()">用契约骗取碎片（游说 DC15，需商盟契约）</button>'+
+      '<button class="btn w-full" onclick="closeModal()">退出宴席</button>';
+      openModal(html);
+    }});
+  }
+  if(loc.id==='s_market'){
+    acts.push({t:'逛逛黑市',fn:()=>{closeModal();openShop('shadowmarket');}});
+  }
+  if(loc.id.endsWith('_gate')){
+    acts.push({t:'返回主物质位面',fn:()=>{closeModal();travelTo('material');}});
+  }
+  acts.push({t:'离开',fn:()=>closeModal()});
+  let html='<h3 class="text-lg font-bold text-ink mb-1">'+esc(loc.n)+'</h3>';
+  html+='<p class="text-xs text-parch-700 mb-3 leading-relaxed">'+esc(loc.desc)+'</p><div class="space-y-1">';
+  acts.forEach((a,i)=>{
+    html+='<button class="btn w-full text-left" onclick="locAct('+i+')">▸ '+esc(a.t)+'</button>';
+  });
+  html+='</div>';
+  openModal(html);
+  window._locActs=acts;
+}
+function locAct(i){
+  const a=(window._locActs||[])[i];
+  if(a&&a.fn)a.fn();
+}
+window.locAct=locAct;
+function feyFight(){
+  closeModal();
+  Combat.start({monsters:[['fey_knight',1]],intro:'妖精骑士收起酒杯，荆棘细剑出鞘：「让我们看看，凡人的传奇值不值一枚星核！」',
+    onWin:()=>{setF('shardF');Game.addShard();Game.favAdd('trade',10);}});
+}
+function feyCheat(){
+  closeModal();
+  if(!f('feyUnlocked')){Game.log('你没有商盟的契约。');return;}
+  const r=Game.check('游说',15);
+  if(r.ok){setF('shardF');Game.addShard();Game.favAdd('trade',15);
+    Game.log('骑士读完烫金契约，大笑三声，把碎片抛给你：「商盟的账，比我的剑更锋利。这笔旧账，清了！」','gain');
+  }else{
+    Game.log('骑士眯起眼：「凡人的小聪明。」宴会骤然变调……');
+    feyFight();
+  }
+}
+window.feyFight=feyFight;window.feyCheat=feyCheat;
+function longRest(inn){
+  if(inn&&G.gold<10){toast('金币不足');return;}
+  if(inn)gainGold(-10);
+  G.hp=G.hpMax;
+  G.slotsUsed=[0,0,0,0,0];
+  G.breathUsed=false;
+  G.healPool=G.cls==='cleric'?G.level*3:G.healPool;
+  G.luckReroll=1;
+  delete G.flags.swUsed;
+  G.time+=480;
+  if(G.time>=1440){G.time-=1440;G.day++;G.days++;rollWeather();}
+  Game.log('你休息了八小时。（长休完成，生命/法术位/龙息恢复）','gain');SFX.play('heal');
+  // 野外露营风险
+  if(!inn&&G.plane==='material'&&R.chance(.2)){
+    Game.log('半夜，你被逼近的脚步声惊醒！','combat');
+    const reg=regionAt(G.x,G.y);
+    const pick=R.pick(reg.enc);
+    Combat.start({monsters:[[pick[0],1]],intro:'夜袭！'});
+  }
+  renderAll();autoSave();
+}
+function shortRest(safe){
+  G.time+=60;
+  if(G.time>=1440){G.time-=1440;G.day++;G.days++;rollWeather();}
+  const hd=CLASSES[G.cls].hd;
+  const heal=R.d(hd)+mod('con');
+  G.hp=Math.min(G.hpMax,G.hp+heal);
+  delete G.flags.swUsed;
+  G.breathUsed=false;
+  G.healPool=G.cls==='cleric'?G.level*3:G.healPool;
+  Game.log('短休一小时，恢复 '+heal+' 生命。','gain');
+  if(!safe&&G.plane==='material'&&R.chance(.15)){
+    const reg=regionAt(G.x,G.y);
+    const pick=R.pick(reg.enc);
+    Combat.start({monsters:[[pick[0],1]],intro:'休息时遭遇敌人！'});
+  }
+  renderAll();autoSave();
+}
+function gameOverModal(){
+  openModal('<h3 class="text-2xl font-bold text-blood text-center mb-3">你死了</h3>'+
+    '<p class="text-sm text-parch-700 mb-4 text-center">星陨的天空下又多了一座无名坟。但命运给了你另一次机会……</p>'+
+    '<div class="flex justify-center gap-2"><button class="btn" onclick="Game.load();closeModal();">读取存档</button>'+
+    '<button class="btn btn-red" onclick="location.reload()">回到标题</button></div>');
+  SFX.play('death');
+}
+function finaleDialog(){
+  Game.log('你登上星核祭坛。四枚碎片悬浮而起，门扉上的四道凹槽逐一亮起。堕落星灵的意识如潮水般涌入你的脑海——「凡人，你想用我的死亡买什么？」','quest');
+  const opts=[];
+  const add=(label,cond,lock,fn)=>{
+    if(cond())opts.push({label,fn});
+    else if(lock)opts.push({label,lock});
+  };
+  add('修复天穹（教会主导：教会好感≥60）',()=>G.fav.church>=60,null,()=>Game.ending('sky'));
+  add('加冕星冠（灰烬主导：灰烬好感≥60）',()=>G.fav.ash>=60,null,()=>Game.ending('crown'));
+  add('展开永夜之幕（幽影主导：幽影好感≥60）',()=>G.fav.shadow>=60,null,()=>Game.ending('night'));
+  add('拍卖星核（商盟主导：商盟好感≥60 且金币≥3000）',()=>G.fav.trade>=60&&G.gold>=3000,null,()=>Game.ending('gold'));
+  add('放开手，让位面自由交融（无前提）',()=>true,null,()=>Game.ending('free'));
+  add('以身为烛，封印裂隙（无前提）',()=>true,null,()=>Game.ending('seal'));
+  let html='<h3 class="text-lg font-bold text-ink mb-2">终局抉择</h3><p class="text-xs text-parch-700 mb-3">星灵的问题在颅腔里回荡。每个选择都是一个结局——选吧。</p><div class="space-y-1">';
+  opts.forEach(o=>{
+    if(o.lock)html+='<div class="btn w-full text-left" style="opacity:.4;cursor:not-allowed">（未达成）'+esc(o.lock)+'</div>';
+    else html+='<button class="btn w-full text-left" onclick="finalePick(\''+o.label.slice(0,4)+'\')">▸ '+esc(o.label)+'</button>';
+  });
+  html+='</div>';
+  window._finale=opts.filter(o=>o.fn);
+  openModal(html);
+}
+function finalePick(key){
+  const o=(window._finale||[]).find(x=>x.label.startsWith(key));
+  if(o){closeModal();o.fn();}
+}
+window.finalePick=finalePick;
+
+/* =====================================================
+   Phaser 场景
+===================================================== */
+class WorldScene extends Phaser.Scene{
+  constructor(){super('world');}
+  create(){
+    scene=this;
+    this.keys=this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT');
+    this.moveCd=0;
+    this.terrG=this.add.graphics().setDepth(0);
+    this.objLayer=this.add.container(0,0).setDepth(1);
+    this.fogG=this.add.graphics().setDepth(2);
+    this.unitG=this.add.graphics().setDepth(3);
+    this.player=this.add.graphics().setDepth(4);
+    this.overlay=this.add.graphics().setDepth(10).setScrollFactor(0);
+    this.input.on('pointerdown',p=>{
+      const tx=Math.floor(p.worldX/TS),ty=Math.floor(p.worldY/TS);
+      if(Combat.active)Combat.onClick(tx,ty);
+      else{
+        if(Math.abs(tx-G.x)+Math.abs(ty-G.y)===1){
+          tryMove(tx-G.x,ty-G.y);
+        }
+      }
+    });
+    this.refreshAll();
+  }
+  refreshAll(){
+    if(!G)return;
+    const m=getMap(G.plane);
+    this.cameras.main.setBounds(0,0,m.w*TS,m.h*TS);
+    this.cameras.main.startFollow(this.player,true,.15,.15);
+    this.drawTerrain();this.drawObjects();this.drawFog();this.drawPlayer();this.drawOverlay();
+  }
+  drawTerrain(){
+    const g=this.terrG;m0();
+    const m=getMap(G.plane),pal=PLANES[G.plane].pal;
+    g.clear();
+    for(let y=0;y<m.h;y++)for(let x=0;x<m.w;x++){
+      const t=m.t[idx(x,y,m.w)];
+      g.fillStyle(Phaser.Display.Color.HexStringToColor(pal[t]||pal[0]).color,1);
+      g.fillRect(x*TS,y*TS,TS,TS);
+      // 纹理点缀
+      if(t===1){g.fillStyle(0x1d4a18,1);g.fillRect(x*TS+8,y*TS+6,8,12);g.fillStyle(0x2e6a26,1);g.fillRect(x*TS+4,y*TS+2,16,8);}
+      else if(t===2){g.fillStyle(0x4a4a4a,1);g.fillRect(x*TS+4,y*TS+8,16,12);g.fillStyle(0x8a8a8a,1);g.fillRect(x*TS+8,y*TS+4,8,8);}
+      else if(t===3){g.fillStyle(0x1d3a5a,1);g.fillRect(x*TS+3,y*TS+8,TS-6,6);}
+      else if(t===4){g.fillStyle(0x8a7040,1);g.fillRect(x*TS,y*TS+9,TS,6);}
+      else if(t===5){g.fillStyle(0x6a4030,1);g.fillRect(x*TS+2,y*TS+4,TS-4,16);g.fillStyle(0xc24a1d,1);g.fillRect(x*TS+8,y*TS+7,4,3);}
+      else if(t===6){g.fillStyle(0x2a3a20,1);g.fillRect(x*TS+3,y*TS+12,7,4);g.fillRect(x*TS+13,y*TS+5,6,4);}
+      else if(t===7){g.fillStyle(0xffffff,1);g.fillRect(x*TS+5,y*TS+5,4,4);g.fillRect(x*TS+14,y*TS+13,4,4);}
+      else if(t===8){g.fillStyle(0x8a6a3a,1);g.fillRect(x*TS+4,y*TS+10,6,4);}
+      else if(t===9){g.fillStyle(0xff8a1d,1);g.fillRect(x*TS+3,y*TS+6,TS-6,TS-10);}
+      else if(t===10){g.fillStyle(0x6a5030,1);g.fillRect(x*TS,y*TS+4,TS,16);}
+      else if(t===11){g.fillStyle(0x1d1030,1);g.fillRect(x*TS+2,y*TS+2,TS-4,TS-4);g.fillStyle(0x6a5aaa,1);g.fillRect(x*TS+8,y*TS+8,6,6);}
+    }
+    function m0(){}
+  }
+  drawObjects(){
+    const c=this.objLayer;
+    c.removeAll(true);
+    LOCS.filter(l=>l.plane===G.plane).forEach(l=>{
+      const seen=G.fog[G.plane]&&G.fog[G.plane][idx(l.x,l.y,getMap(G.plane).w)];
+      if(!seen)return;
+      const bg=this.add.circle(l.x*TS+TS/2,l.y*TS+TS/2,10,0x3a2b16).setStrokeStyle(2,0xd3b476);
+      const tx=this.add.text(l.x*TS+TS/2,l.y*TS+TS/2,l.g,{font:'bold 12px Georgia',color:'#f0e2bd'}).setOrigin(.5);
+      c.add([bg,tx]);
+    });
+  }
+  drawFog(){
+    const g=this.fogG;
+    g.clear();
+    if(!G.fog[G.plane])return;
+    const m=getMap(G.plane);
+    const vr=6+(RACES[G.race].dark?2:0)+(f('blessStar')?1:0);
+    for(let y=0;y<m.h;y++)for(let x=0;x<m.w;x++){
+      const seen=G.fog[G.plane][idx(x,y,m.w)];
+      if(!seen){g.fillStyle(0x000000,1);g.fillRect(x*TS,y*TS,TS,TS);continue;}
+      const d=Math.abs(x-G.x)+Math.abs(y-G.y);
+      const dd=Math.max(Math.abs(x-G.x),Math.abs(y-G.y));
+      if(dd>vr){
+        const night=!isDaytime();
+        g.fillStyle(0x000000,night?.72:.62);
+        g.fillRect(x*TS,y*TS,TS,TS);
+      }else if(dd>vr-2){
+        g.fillStyle(0x000000,.25);
+        g.fillRect(x*TS,y*TS,TS,TS);
+      }
+    }
+  }
+  drawPlayer(){
+    const g=this.player;
+    g.clear();
+    const px=G.x*TS+TS/2,py=G.y*TS+TS/2;
+    g.setPosition(px,py);
+    const col=Phaser.Display.Color.HexStringToColor(CLASSES[G.cls].color).color;
+    g.fillStyle(col,1);
+    g.fillCircle(0,0,7);
+    g.fillStyle(0xf0e2bd,1);
+    g.fillCircle(0,-2,3);
+    g.lineStyle(2,0xf0e2bd,.9);
+    g.strokeCircle(0,0,7);
+  }
+  drawOverlay(){
+    const g=this.overlay;
+    g.clear();
+    const W=this.scale.width,H=this.scale.height;
+    // 昼夜
+    let alpha=0,color=0x000000;
+    const hour=G.time/60;
+    if(hour<5||hour>=20){alpha=.32;color=0x0a0a2a;}
+    else if(hour<8){alpha=.15;color=0x3a2a5a;}
+    else if(hour>=17&&hour<20){alpha=.18;color=0x5a2a1a;}
+    if(G.weather==='rain'){alpha=Math.min(.5,alpha+.15);color=0x1a2a4a;}
+    if(G.weather==='storm'){alpha=Math.min(.55,alpha+.22);color=0x1a1a3a;}
+    if(G.weather==='fog'&&G.plane==='material'){alpha=Math.min(.5,alpha+.12);color=0x8a8a7a;}
+    if(alpha>0){g.fillStyle(color,alpha);g.fillRect(0,0,W,H);}
+  }
+  /* ---- 战斗渲染 ---- */
+  enterCombat(){
+    this.drawCombatInit();
+  }
+  exitCombat(){
+    $('combatBar').classList.add('hidden');
+    $('combatBar').innerHTML='';
+    this.refreshAll();
+  }
+  drawCombatInit(){
+    this.drawCombat();
+  }
+  drawCombat(){
+    if(!Combat.active)return;
+    const a=Combat.arena;
+    const pal={0:'#5d8a3c',1:'#2e5a26',2:'#6b6b6b',3:'#2f5d8a',6:'#4a5d3a',7:'#d8d8e2',8:'#b09a5f',11:'#3a2a5a',12:'#7a7a72'};
+    const g=this.terrG;
+    g.clear();
+    for(let y=0;y<a.h;y++)for(let x=0;x<a.w;x++){
+      const t=a.t[idx(x,y,a.w)];
+      g.fillStyle(Phaser.Display.Color.HexStringToColor(pal[t]||pal[0]).color,1);
+      g.fillRect(x*TS,y*TS,TS,TS);
+      g.lineStyle(1,0x000000,.12);
+      g.strokeRect(x*TS,y*TS,TS,TS);
+    }
+    // 高亮可达
+    const u=Combat.unit('p');
+    if(u&&Combat.unit(Combat.order[Combat.turn])===u&&Combat.phase==='move'&&!Combat.moved){
+      const reach=Combat.bfs(u,u.speed);
+      for(const k in reach.dist){
+        if(reach.dist[k]===0)continue;
+        const [x,y]=k.split(',').map(Number);
+        g.fillStyle(0xffffff,.16);
+        g.fillRect(x*TS+2,y*TS+2,TS-4,TS-4);
+      }
+    }
+    // 单位
+    const ug=this.unitG;
+    ug.clear();
+    Combat.units.forEach(t=>{
+      if(t.dead)return;
+      const px=t.x*TS+TS/2,py=t.y*TS+TS/2;
+      const isP=t.side==='p';
+      ug.fillStyle(isP?0x3f6d33:0x8a2f1d,1);
+      ug.fillCircle(px,py,8);
+      ug.lineStyle(2,0xf0e2bd,1);
+      ug.strokeCircle(px,py,8);
+      ug.fillStyle(0x000000,.5);
+      ug.fillRect(px-9,py-14,18,4);
+      ug.fillStyle(isP?0x6ac46a:0xc44a4a,1);
+      ug.fillRect(px-9,py-14,18*Math.max(0,t.hp/t.hpMax),4);
+      if(t.cond.invis){ug.fillStyle(0xffffff,.4);ug.fillCircle(px,py,8);}
+    });
+    // 玩家标记
+    this.drawCombatPlayerMarker(u);
+    this.cameras.main.setBounds(0,0,a.w*TS,a.h*TS);
+    if(u){this.cameras.main.centerOn(u.x*TS+TS/2,u.y*TS+TS/2);}
+  }
+  drawCombatPlayerMarker(u){
+    const g=this.player;
+    g.clear();
+    if(!u||u.dead)return;
+    g.setPosition(u.x*TS+TS/2,u.y*TS+TS/2);
+    const col=Phaser.Display.Color.HexStringToColor(CLASSES[G.cls].color).color;
+    g.fillStyle(col,1);g.fillCircle(0,0,9);
+    g.lineStyle(3,0xf0e2bd,1);g.strokeCircle(0,0,9);
+  }
+  update(time,delta){
+    if(!G||!G.created||Game.ended)return;
+    if(Combat.active||Dlg.active||modalOpen())return;
+    if(this.moveCd>0){this.moveCd-=delta;return;}
+    const k=this.keys;
+    let dx=0,dy=0;
+    if(k.LEFT.isDown||k.A.isDown)dx=-1;
+    else if(k.RIGHT.isDown||k.D.isDown)dx=1;
+    else if(k.UP.isDown||k.W.isDown)dy=-1;
+    else if(k.DOWN.isDown||k.S.isDown)dy=1;
+    if(dx||dy){tryMove(dx,dy);this.moveCd=130;}
+  }
+}
+
+/* =====================================================
+   UI 渲染
+===================================================== */
+function renderAll(){renderTopbar();renderStory();}
+function renderTopbar(){
+  if(!G)return;
+  $('tbPlane').textContent=PLANES[G.plane].n;
+  const hour=Math.floor(G.time/60);
+  const seg=hour<5?'深夜':hour<8?'清晨':hour<12?'上午':hour<17?'午后':hour<20?'黄昏':'夜晚';
+  $('tbTime').textContent='第'+G.day+'天 · '+seg;
+  $('tbWeather').textContent={clear:'晴',rain:'雨',fog:'雾',storm:'暴风雨'}[G.weather]||G.weather;
+  $('tbHP').style.width=Math.max(0,G.hp/G.hpMax*100)+'%';
+  $('tbHPn').textContent=G.hp+'/'+G.hpMax;
+  $('tbAC').textContent=computeAC();
+  $('tbGold').textContent=G.gold;
+  $('tbShard').textContent=G.shards;
+}
+function renderStory(){
+  const box=$('tabContent');
+  if(!G||!G.created){box.innerHTML='<div class="text-sm text-parch-600">尚未开始冒险。</div>';return;}
+  if(Dlg.active&&Dlg.node){box.innerHTML=renderDialogue();box.scrollTop=box.scrollHeight;return;}
+  if(curTab==='story'){
+    let html='';
+    G.log.slice(-120).forEach(l=>{
+      html+='<div class="logline '+(l.c?'log-'+l.c:'')+'">'+esc(l.t)+'</div>';
+    });
+    if(!html)html='<div class="text-sm text-parch-600">（暂无记录）</div>';
+    box.innerHTML=html;
+    box.scrollTop=box.scrollHeight;
+  }else if(curTab==='char')renderChar(box);
+  else if(curTab==='inv')renderInv(box);
+  else if(curTab==='spell')renderSpells(box);
+  else if(curTab==='quest')renderQuests(box);
+  else if(curTab==='sys')renderSys(box);
+}
+function renderChar(box){
+  const c=CLASSES[G.cls],rc=RACES[G.race],bg=BGS[G.bg];
+  const favn=[['church','星辉教会','#8a7030'],['ash','灰烬兄弟会','#8a4030'],['shadow','幽影议会','#4a3a5a'],['trade','自由商盟','#3f6d33']];
+  let html='<div class="card mb-2"><div class="flex justify-between items-baseline"><b class="text-lg text-ink">'+esc(G.name)+'</b><span class="text-xs text-parch-600">'+rc.n+' · '+c.n+' · '+bg.n+'</span></div>'+
+    '<div class="text-xs text-parch-700 mt-1">'+rc.trait+'</div>'+
+    '<div class="text-xs text-parch-700">职业特性：'+c.feat+'</div></div>';
+  html+='<div class="grid grid-cols-3 gap-1 mb-2">';
+  ABILS.forEach(a=>{
+    html+='<div class="card text-center"><div class="text-xs text-parch-600">'+ABILN[a]+'</div><b class="text-lg">'+G.stats[a]+'</b> <span class="text-xs">('+((mod(a))>=0?'+':'')+mod(a)+')</span></div>';
+  });
+  html+='</div>';
+  html+='<div class="grid grid-cols-2 gap-1 text-xs mb-2">';
+  html+='<div class="card">等级 <b>'+G.level+'</b></div><div class="card">经验 <b>'+G.xp+'</b>'+(G.level<10?' / '+XP_TABLE[G.level+1]:'（满级）')+'</div>';
+  html+='<div class="card">生命 <b>'+G.hp+'/'+G.hpMax+'</b></div><div class="card">AC <b>'+computeAC()+'</b></div>';
+  html+='<div class="card">熟练 '+prof()+'</div><div class="card">法术DC '+spellDC()+'</div>';
+  html+='</div>';
+  html+='<div class="card mb-2"><div class="text-xs font-bold mb-1">技能熟练</div><div class="text-xs text-parch-700">'+(G.skills.join('、')||'无')+'</div></div>';
+  if(CLASSES[G.cls].casting){
+    const maxA=slotsMaxFor(G.level,G.cls);
+    html+='<div class="card mb-2"><div class="text-xs font-bold mb-1">法术位</div>';
+    maxA.forEach((n,i)=>{
+      const used=G.slotsUsed[i]||0;
+      html+='<span class="text-xs mr-2">'+(i+1)+'环：'+(n-used)+'/'+n+'</span>';
+    });
+    html+='</div>';
+  }
+  html+='<div class="card"><div class="text-xs font-bold mb-1">阵营好感</div>';
+  favn.forEach(([k,n,col])=>{
+    html+='<div class="flex items-center gap-2 text-xs mb-1"><span style="width:80px">'+n+'</span><div class="hpbar flex-1"><div style="width:'+G.fav[k]+'%;background:'+col+'"></div></div><span>'+G.fav[k]+'</span></div>';
+  });
+  html+='</div>';
+  if(G.memory&&Object.keys(G.memory).length){
+    html+='<div class="card mt-2"><div class="text-xs font-bold mb-1">羁绊记忆</div>';
+    Object.keys(G.memory).forEach(k=>{
+      html+='<div class="text-xs text-parch-700">· '+esc(NPCS[k]?NPCS[k].name:k)+'：'+esc(G.memory[k].map(m=>m.t).slice(-2).join('；'))+'</div>';
+    });
+    html+='</div>';
+  }
+  box.innerHTML=html;
+}
+function renderInv(box){
+  let html='<div class="text-xs text-parch-700 mb-2">金币：<b class="text-yellow-700">'+G.gold+'</b> · 点击装备栏更换装备</div>';
+  const slots=[['weapon','武器'],['armor','护甲'],['shield','盾牌'],['trinket','饰品']];
+  html+='<div class="grid grid-cols-2 gap-1 mb-2">';
+  slots.forEach(([k,n])=>{
+    const id=G.equip[k];
+    html+='<div class="card text-xs"><div class="text-parch-600">'+n+'</div><b>'+(id?esc(ITEMS[id].n):'（空）')+'</b></div>';
+  });
+  html+='</div><div class="space-y-1">';
+  if(!G.inv.length)html+='<div class="text-sm text-parch-600">（背包空空如也）</div>';
+  G.inv.forEach((it,i)=>{
+    const item=ITEMS[it.id];
+    const canEquip=item.type==='weapon'||item.type==='armor'||item.type==='shield';
+    html+='<div class="card flex items-center gap-2 text-xs">'+
+      '<div class="flex-1"><b>'+esc(item.n)+'</b>×'+it.qty+' <span class="text-parch-600">'+(item.desc||'')+(item.dmg?' 伤害'+item.dmg:'')+'</span></div>';
+    if(canEquip)html+='<button class="btn" onclick="equipItem('+i+')">装备</button>';
+    if(item.type==='potion')html+='<button class="btn btn-green" onclick="usePotion('+i+')">饮用</button>';
+    if(item.type==='trinket'&&it.id==='dragonorb')html+='<button class="btn" onclick="toast(\'在战斗中使用\')">战斗用</button>';
+    if(item.type!=='quest'&&it.id!=='shard')html+='<button class="btn btn-red" onclick="sellItem('+i+')">卖'+Math.floor((item.price||0)/2)+'金</button>';
+    html+='</div>';
+  });
+  html+='</div>';
+  box.innerHTML=html;
+}
+window.equipItem=function(i){
+  const it=G.inv[i];if(!it)return;
+  const item=ITEMS[it.id];
+  const slot=item.type==='weapon'?'weapon':item.type==='armor'?'armor':item.type==='shield'?'shield':'trinket';
+  const old=G.equip[slot];
+  removeItem(it.id,1);
+  if(old)giveItem(old,1);
+  G.equip[slot]=it.id;
+  if(slot==='weapon')Game.log('装备了【'+item.n+'】。','sys');
+  else Game.log('装备了【'+item.n+'】（AC调整）。','sys');
+  renderTopbar();renderStory();
+};
+window.usePotion=function(i){
+  const it=G.inv[i];if(!it)return;
+  const item=ITEMS[it.id];
+  if(item.heal){
+    const amount=R.roll(item.heal);
+    G.hp=Math.min(G.hpMax,G.hp+amount);
+    removeItem(it.id,1);
+    Game.log('饮下【'+item.n+'】，恢复 '+amount+' 生命。','gain');SFX.play('heal');
+  }else if(item.fireres){
+    setF2('fireRes',G.day);
+    removeItem(it.id,1);
+    Game.log('抗火药水生效（今日火焰伤害减半）。','gain');
+  }
+  renderTopbar();renderStory();
+};
+window.sellItem=function(i){
+  const it=G.inv[i];if(!it)return;
+  const item=ITEMS[it.id];
+  const price=Math.floor((item.price||0)/2);
+  if(price<=0){toast('这个卖不出价');return;}
+  removeItem(it.id,1);
+  gainGold(price);
+  renderStory();
+};
+function renderSpells(box){
+  if(!CLASSES[G.cls].casting){
+    box.innerHTML='<div class="text-sm text-parch-600">你不会施法。职业特性：'+CLASSES[G.cls].feat+'</div>';
+    return;
+  }
+  const maxA=slotsMaxFor(G.level,G.cls);
+  let html='<div class="card mb-2 text-xs">法术位：';
+  maxA.forEach((n,i)=>{html+=(i+1)+'环 '+(n-(G.slotsUsed[i]||0))+'/'+n+'　';});
+  html+='</div><div class="space-y-1">';
+  const known=G.spells.length?G.spells:CLASSES[G.cls].spells.filter(s=>SPELLS[s].lvl<=maxSpellLvl());
+  if(!known.length)html+='<div class="text-sm text-parch-600">尚未掌握法术。</div>';
+  known.forEach(sid=>{
+    const sp=SPELLS[sid];
+    const avail=sp.lvl===0||slotsAvail(sp.lvl)>0;
+    html+='<div class="card flex items-center gap-2 text-xs">'+
+      '<div class="flex-1"><b>'+esc(sp.n)+'</b> <span class="text-parch-600">'+(sp.lvl===0?'戏法':sp.lvl+'环')+' · '+(sp.dmg?sp.dmg+' '+sp.type:sp.heal?'治疗'+sp.heal:'增益')+' · 射程'+(sp.rng?sp.rng*5:'接触')+'尺</span></div>';
+    if(sp.heal||sp.rest)html+='<button class="btn btn-green" '+(avail?'':'disabled')+' onclick="castOutOfCombat(\''+sid+'\')">施放</button>';
+    else html+='<span class="text-xs text-parch-600">战斗中使用</span>';
+    html+='</div>';
+  });
+  html+='</div>';
+  box.innerHTML=html;
+}
+window.castOutOfCombat=function(sid){
+  const sp=SPELLS[sid];
+  if(sp.lvl>0&&slotsAvail(sp.lvl)<=0){toast('没有法术位');return;}
+  if(sp.lvl>0)useSlot(sp.lvl);
+  if(sp.heal){
+    const amount=R.roll(sp.heal)+castMod();
+    G.hp=Math.min(G.hpMax,G.hp+amount);
+    Game.log('施放【'+sp.n+'】，恢复 '+amount+' 生命。','gain');SFX.play('heal');
+  }else if(sp.rest){
+    Game.log('次级复原术：身心一新。','gain');
+  }
+  renderTopbar();renderStory();
+};
+function renderQuests(box){
+  let html='<div class="space-y-1">';
+  let any=false;
+  Object.keys(QUESTS).forEach(id=>{
+    const st=G.quests[id];
+    const active=st&&!st.done;
+    const recent=st&&st.done;
+    if(!active&&!recent)return;
+    any=true;
+    const q=QUESTS[id];
+    const col=q.type==='主线'?'text-blood':q.type==='阵营'?'text-arc':'text-sage';
+    html+='<div class="card '+(active?'sel':'')+'"><div class="text-xs font-bold '+col+'">['+q.type+']</div><b class="text-sm">'+esc(q.n)+'</b>'+
+      '<div class="text-xs text-parch-700 mt-1">'+esc(questText(id))+'</div>'+(st.done?'<div class="text-xs text-sage mt-1">已完成</div>':'')+'</div>';
+  });
+  if(!any)html+='<div class="text-sm text-parch-600">（暂无任务——去新月镇找镇长艾德温）</div>';
+  html+='</div>';
+  box.innerHTML=html;
+}
+function renderSys(box){
+  let html='<div class="space-y-2 text-xs">';
+  html+='<div class="card"><b class="text-sm">存档</b><div class="mt-1 flex gap-1"><button class="btn" onclick="Game.save()">手动存档</button><button class="btn" onclick="Game.load();scene&&scene.refreshAll()">读取存档</button><button class="btn btn-red" onclick="localStorage.removeItem(SAVE_KEY);toast(\'存档已删除\')">删除存档</button></div><div class="text-parch-600 mt-1">任务进度与长休时会自动存档。</div></div>';
+  html+='<div class="card"><b class="text-sm">设置</b><div class="mt-1 flex gap-1"><button class="btn" onclick="toggleSound()">音效：'+(G.settings.sound?'开':'关')+'</button><button class="btn" onclick="toggleBgm()">环境音：'+(G.settings.bgm?'开':'关')+'</button></div></div>';
+  html+='<div class="card"><b class="text-sm">骰子面板</b><div class="mt-1 flex flex-wrap gap-1">';
+  [['d20',20],['d12',12],['d10',10],['d8',8],['d6',6],['d4',4]].forEach(([n,s])=>{
+    html+='<button class="btn" onclick="rollDice(\''+n+'\','+s+')">'+n+'</button>';
+  });
+  html+='<button class="btn btn-blue" onclick="rollDice(\'优势d20\',20,1)">优势d20</button>';
+  html+='<button class="btn btn-blue" onclick="rollDice(\'劣势d20\',20,-1)">劣势d20</button>';
+  html+='</div></div>';
+  html+='<div class="card"><b class="text-sm">冒险统计</b><div class="mt-1 text-parch-700">历时 '+G.days+' 天 · 击杀 '+G.kills+' · 位面 '+Object.keys(G.planesUnlocked).length+'/5 · 星核 '+G.shards+'/4</div></div>';
+  html+='<div class="card"><b class="text-sm">操作</b><div class="mt-1 text-parch-700">WASD/方向键或点击相邻格移动。走到地点图块触发事件。战斗中点击格子/敌人执行动作。</div></div>';
+  html+='</div>';
+  box.innerHTML=html;
+}
+window.toggleSound=function(){G.settings.sound=!G.settings.sound;renderStory();};
+window.toggleBgm=function(){G.settings.bgm=!G.settings.bgm;SFX.bgm(G.settings.bgm);renderStory();};
+window.rollDice=function(name,sides,adv){
+  const r=R.rollD20(0,adv||0);
+  dicePopup(name,r.nat+(adv?'（'+(adv>0?'优势':'劣势')+'）':''),'d'+sides+' 原始值：'+r.nat+(r.other?'/'+r.other:''));
+  SFX.play('dice');
+};
+window.Game=Game;window.closeModal=closeModal;window.toast=toast;
+window.Dlg=Dlg;window.longRest=longRest;window.shortRest=shortRest;
+
+/* =====================================================
+   屏幕流程
+===================================================== */
+function showGameUI(){
+  $('titleScreen').classList.add('hidden');
+  $('createScreen').classList.add('hidden');
+  $('gameUI').classList.remove('hidden');
+  $('gameUI').classList.add('flex');
+}
+const CState={race:'human',cls:'fighter',bg:'acolyte',stats:null};
+function rollStats(){
+  const rolls=[];
+  for(let i=0;i<6;i++){
+    const d=[R.d(6),R.d(6),R.d(6),R.d(6)].sort((a,b)=>a-b);
+    rolls.push(d[1]+d[2]+d[3]);
+  }
+  rolls.sort((a,b)=>b-a);
+  const prio=CLASSES[CState.cls].prio;
+  const stats={};
+  prio.forEach((ab,i)=>stats[ab]=rolls[i]);
+  CState.stats=stats;
+  renderCreate();
+}
+function renderCreate(){
+  // 种族
+  $('raceRow').innerHTML=Object.keys(RACES).map(k=>{
+    const r=RACES[k];
+    return '<div class="card '+(CState.race===k?'sel':'')+' cursor-pointer text-xs" onclick="selRace(\''+k+'\')"><b>'+r.n+'</b><div class="text-parch-600">'+Object.keys(r.asi).map(a=>'+'+r.asi[a]+' '+ABILN[a]).join(' ')+'</div><div class="text-parch-700 mt-0.5">'+r.trait+'</div></div>';
+  }).join('');
+  // 职业
+  $('clsRow').innerHTML=Object.keys(CLASSES).map(k=>{
+    const c=CLASSES[k];
+    return '<div class="card '+(CState.cls===k?'sel':'')+' cursor-pointer text-xs" onclick="selClass(\''+k+'\')"><b>'+c.n+'</b><div class="text-parch-600">d'+c.hd+' · 主属性'+ABILN[c.prio[0]]+'</div><div class="text-parch-700 mt-0.5">'+c.feat.slice(0,28)+'…</div></div>';
+  }).join('');
+  // 背景
+  $('bgRow').innerHTML=Object.keys(BGS).map(k=>{
+    const b=BGS[k];
+    return '<div class="card '+(CState.bg===k?'sel':'')+' cursor-pointer text-[10px] px-1" onclick="selBg(\''+k+'\')"><b>'+b.n+'</b></div>';
+  }).join('');
+  // 属性
+  if(CState.stats){
+    $('statBox').innerHTML=ABILS.map(a=>'<div class="card px-2 py-1">'+ABILN[a]+' <b>'+CState.stats[a]+'</b></div>').join('');
+  }
+  // 摘要
+  const c=CLASSES[CState.cls],rc=RACES[CState.race];
+  const hp=c.hd+((CState.stats&&mod2('con',CState.stats))||0);
+  $('createSummary').innerHTML=CState.stats?
+    ('生命上限预估 <b>'+(c.hd+Math.floor((CState.stats.con-10)/2)+1)+'</b> · 初始装备：'+c.gear.map(g=>ITEMS[g[0]].n).join('、')+
+    (c.spells?' · 起始法术：'+c.spells.filter(s=>SPELLS[s].lvl<=1).map(s=>SPELLS[s].n).join('、'):'')):
+    '点击「重掷属性」开始。';
+}
+window.mod2=mod2;
+function mod2(a,st){return Math.floor((st[a]-10)/2);}
+window.selRace=function(k){CState.race=k;rollStats();};
+window.selClass=function(k){CState.cls=k;rollStats();};
+window.selBg=function(k){CState.bg=k;renderCreate();};
+
+function boot(){
+  // 标题按钮
+  $('btnNew').onclick=()=>{
+    SFX.play('click');
+    $('titleScreen').classList.add('hidden');
+    $('createScreen').classList.remove('hidden');
+    rollStats();
+  };
+  $('btnBackT').onclick=()=>{$('createScreen').classList.add('hidden');$('titleScreen').classList.remove('hidden');};
+  $('btnRoll').onclick=()=>{SFX.play('dice');rollStats();};
+  $('btnStart').onclick=()=>{
+    const name=$('inpName').value.trim()||'无名者';
+    if(!CState.stats)rollStats();
+    Game.newGame({name,race:CState.race,cls:CState.cls,bg:CState.bg,stats:CState.stats});
+  };
+  $('btnContinue').onclick=()=>{if(!Game.load())toast('没有可用存档');};
+  $('btnHelpT').onclick=showHelp;
+  $('btnHelp').onclick=showHelp;
+  $('btnRestart').onclick=()=>location.reload();
+  // 顶栏
+  $('btnQSave').onclick=()=>Game.save();
+  $('btnRest').onclick=()=>{
+    openModal('<h3 class="text-lg font-bold mb-2">休息</h3>'+
+      '<button class="btn w-full mb-1" onclick="closeModal();longRest(true)">长休（旅店标准，10金币，全恢复）</button>'+
+      '<button class="btn w-full" onclick="closeModal();shortRest(true)">短休（1小时，恢复1颗骰）</button>');
+  };
+  $('btnHere').onclick=()=>{
+    if(Game.busy())return;
+    const loc=locAt(G.x,G.y);
+    if(loc)showLocMenu(loc);
+    else{
+      const reg=regionAt(G.x,G.y);
+      openModal('<h3 class="text-lg font-bold mb-1">'+esc(reg.n)+'</h3><p class="text-xs text-parch-700">'+(G.plane==='material'?'野外荒地，留意四周的动静。':'异界荒野，空气里弥漫着陌生的法则。')+'</p><div class="text-right mt-2"><button class="btn" onclick="closeModal()">关闭</button></div>');
+    }
+  };
+  $('btnSnd').onclick=()=>{G.settings.sound=!G.settings.sound;$('btnSnd').textContent='音效:'+(G.settings.sound?'开':'关');};
+  // 存档按钮
+  const hasSave=!!localStorage.getItem(SAVE_KEY);
+  if(hasSave)$('btnContinue').classList.remove('hidden');
+  // Phaser
+  if(window.Phaser){
+    phaserGame=new Phaser.Game({
+      type:Phaser.AUTO,parent:'phaserHost',width:1000,height:660,
+      pixelArt:true,backgroundColor:'#100c06',
+      scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},
+      scene:[WorldScene]
+    });
+  }else{
+    setTimeout(()=>{
+      if(!window.Phaser)openModal('<h3 class="text-lg font-bold text-blood mb-2">资源加载失败</h3><p class="text-sm">Phaser3 CDN 未能加载，请检查网络后刷新页面。</p>');
+    },3000);
+  }
+  // 快捷键
+  window.addEventListener('keydown',e=>{
+    if(!G||!G.created)return;
+    if(e.key==='Escape'){if(modalOpen())closeModal();else if(Dlg.active)Dlg.close();}
+  });
+}
+function showHelp(){
+  openModal('<h3 class="text-xl font-bold text-ink mb-2">玩法说明</h3>'+
+  '<div class="text-sm leading-relaxed text-parch-800 space-y-2">'+
+  '<p><b>目标：</b>集齐4枚星核碎片，登上星陨坑的星核祭坛，在6种结局中做出你的抉择。</p>'+
+  '<p><b>移动：</b>WASD/方向键或点击相邻格子。走到城镇/地点图块自动触发事件，迷雾会随探索散开。</p>'+
+  '<p><b>主线：</b>新月镇找镇长 → 各阵营首领处完成阵营任务解锁位面 → 进入各≪星槎残骸/元素圣殿/静默回廊/宴会树≫夺取碎片 → 回星陨坑终局。</p>'+
+  '<p><b>战斗：</b>DND5E规则——先攻决定顺序；每回合可移动+行动（攻击/施法/物品/躲避）。注意借机攻击与优势劣势。</p>'+
+  '<p><b>检定：</b>d20+调整值 vs DC。技能熟练、装备、灵感徽章都会影响结果。</p>'+
+  '<p><b>死亡：</b>生命归零进入死亡豁免（3胜稳定/3败死亡），死亡后可读档。</p>'+
+  '<p><b>存档：</b>系统页手动存读档；任务推进与长休自动存档。</p>'+
+  '</div><div class="text-right mt-3"><button class="btn" onclick="closeModal()">明白了</button></div>');
+}
+document.addEventListener('DOMContentLoaded',boot);
+</script>
+</body>
+</html>
