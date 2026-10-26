@@ -90,7 +90,7 @@ tailwind.config = {
       <span id="tbHPn" class="text-parch-200 text-xs"></span>
     </div>
     <div class="text-parch-300">AC <span id="tbAC" class="text-parch-100 font-bold">10</span></div>
-    <div class="text-parch-300">金币 <span id="tbGold" class="text-yellow-200 font-bold">0</span></div>
+    <div class="text-parch-300" id="tbMoneyWrap">财富 <span id="tbGold" class="text-yellow-200 font-bold">0</span></div>
     <div class="text-parch-300">星核 <span id="tbShard" class="text-arc font-bold">0</span>/4</div>
     <div class="ml-auto flex gap-1.5">
       <button class="btn" id="btnHere">查看此地</button>
@@ -318,6 +318,12 @@ const RACES={
   gnome:{n:'侏儒',asi:{int:2,dex:1},trait:'侏儒机敏：智力豁免优势；幻术抗性。',dark:6,gnome:1},
   aasimar:{n:'神裔',asi:{cha:2,wis:1},trait:'天界血统：每长休一次，濒死时自动恢复1点生命。',dark:6,light:1},
   warforged:{n:'战俑',asi:{con:2,str:1},trait:'构装体：AC+1；免疫毒素；无需呼吸。',dark:0,acbonus:1,poisonImmune:1},
+  drow:{n:'卓尔精灵',asi:{dex:2,cha:1},trait:'黑暗视觉120尺；强光下先攻-1；毒素抗性。',dark:9,sunlight:1},
+  undine:{n:'水裔',asi:{wis:2,con:1},trait:'两栖：水中移动无碍；冷冻伤害抗性。',dark:0,waterborn:1,frostr:1},
+  ifrit:{n:'火裔',asi:{cha:2,dex:1},trait:'炎血：火焰伤害抗性；每日一次灼热目光(战斗)。',dark:0,fireres:1},
+  sylph:{n:'风裔',asi:{dex:2,int:1},trait:'御风：先攻+1；雷声天赋。',dark:0,initbonus:1},
+  oread:{n:'土裔',asi:{con:2,str:1},trait:'山岩血脉：毒素豁免优势；坡地移动不减。',dark:0,poisonAdv:1},
+  tabaxi:{n:'猫民',asi:{dex:2,cha:1},trait:'猫之敏捷：移动速度+1格；攀爬无碍。',dark:6,fast:1},
 };
 const BGS={
   acolyte:{n:'侍僧',skills:['医药','宗教'],fav:'church',txt:'你曾在星辉修道院的烛火下抄写圣典。'},
@@ -376,6 +382,28 @@ const CLASSES={
     prio:['int','dex','con','wis','cha','str'],casting:'int',castingHalf:true,
     gear:[['steamrifle',1],['leather',1]],feat:'蒸汽造物：枪械伤害+1；每日一次制造药水。',color:'#7a6a4a',
     spells:['firebolt','magicmissile','shield','scorchingray']},
+  warlock:{n:'邪术师',hd:8,saves:['wis','cha'],pool:['奥秘','欺瞒','威吓','生存'],nskill:2,
+    prio:['cha','con','dex','wis','int','str'],casting:'cha',
+    gear:[['dagger',2],['leather',1]],feat:'邪能契约：每长休一次，可免费施展一个3环法术。',color:'#2a5a4a',
+    spells:['eldritchbl','scorchingray','blightward','icestorm']},
+  witch:{n:'女巫',hd:6,saves:['wis','cha'],pool:['奥秘','医药','欺瞒','历史'],nskill:2,
+    prio:['cha','wis','dex','con','int','str'],casting:'cha',castingHalf:true,
+    gear:[['quarterstaff',1]],feat:'诅咒：每场战斗首回合，随机敌人AC-1、攻击-1。',color:'#3a5a2a',
+    spells:['rayfrost','eldritchbl','blightward','lesserest','windblade']},
+  shaman:{n:'萨满',hd:8,saves:['wis','con'],pool:['生存','自然','医药','驯兽'],nskill:2,
+    prio:['wis','con','str','dex','cha','int'],casting:'wis',castingHalf:true,
+    gear:[['quarterstaff',1],['potion_heal',1]],feat:'图腾守护：受到的物理伤害-1；短休恢复全队。',color:'#5a7a3a',
+    spells:['healingword','curewounds','lesserest','windblade']},
+  psion:{n:'灵能师',hd:6,saves:['int','wis'],pool:['奥秘','洞悉','调查','欺瞒'],nskill:2,
+    prio:['int','con','dex','wis','cha','str'],casting:'int',
+    gear:[['dagger',1],['potion_heal',1]],feat:'心灵之力：力场类法术伤害+1；每场战斗一次免费灵感。',color:'#4a5a8a',
+    spells:['magicmissile','eldritchbl','warpbolt','blightward','icestorm','coneofcold']},
+  knight:{n:'骑士',hd:10,saves:['str','con'],pool:['运动','威吓','驯兽','游说'],nskill:2,
+    prio:['str','con','cha','wis','dex','int'],casting:null,
+    gear:[['longsword',1],['chainshirt',1],['shield',1]],feat:'坚守之盾：持盾时AC额外+1；借机攻击优势。',color:'#6a6a8a'},
+  duelist:{n:'决斗家',hd:8,saves:['dex','int'],pool:['杂技','表演','洞悉','察觉'],nskill:2,
+    prio:['dex','int','cha','con','wis','str'],casting:null,
+    gear:[['rapier',1],['studded',1]],feat:'决斗优雅：单手持武命中+1；被激怒者攻击你有劣势(首回合)。',color:'#8a6a4a'},
 };
 
 /* 法术（SRD数值） */
@@ -400,6 +428,7 @@ const SPELLS={
   flamestrike:{n:'焰击术',lvl:5,dmg:'8d6',type:'火焰',rng:12,save:'dex',half:1,area:1,cls:['cleric']},
   coneofcold:{n:'寒冰锥',lvl:5,dmg:'8d8',type:'冷冻',rng:1,save:'con',half:1,cone:1,cls:['wizard']},
   warpbolt:{n:'相位弹',lvl:2,dmg:'2d10',type:'力场',rng:12,atk:1,cls:['wizard']},
+  eldritchbl:{n:'邪能爆',lvl:0,dmg:'1d10',type:'力场',rng:12,atk:1,cls:['warlock','witch','psion']},
 };
 /* ---- 职业分支（3级解锁二选一） ---- */
 const SUBCLASS={
@@ -415,6 +444,12 @@ const SUBCLASS={
   bard:{branch:['lore','valor'],list:{lore:{n:'学识学院',d:'技能检定+1。'},valor:{n:'勇气学院',d:'战斗首回合攻击+1。'}}},
   sorcerer:{branch:['draconic','wild'],list:{draconic:{n:'龙脉术士',d:'火焰法术伤害+1d4。'},wild:{n:'狂野魔法',d:'每次施法25%概率恢复1点法术位（1环）。'}}},
   artificer:{branch:['gunsmith','alchemist'],list:{gunsmith:{n:'枪炮师',d:'枪械伤害再+1（共+2）。'},alchemist:{n:'炼金师',d:'每日长休自动获得1瓶治疗药水。'}}},
+  warlock:{branch:['chain','tome'],list:{chain:{n:'链主',d:'每场战斗开始随机治愈2d4生命。'},tome:{n:'书主',d:'额外习得2个等级内法术（火球/闪电束）。'}}},
+  witch:{branch:['hex','covens'],list:{hex:{n:'毒咒使',d:'诅咒效果翻倍（AC-1且攻击-2）。'},covens:{n:'集会女巫',d:'每日一次呼唤同伴协击（3d6）。'}}},
+  shaman:{branch:['storm','earth'],list:{storm:{n:'风暴图腾',d:'闪电法术伤害+1d4。'},earth:{n:'大地图腾',d:'受击减伤再-1（共-2）。'}}},
+  psion:{branch:['telepath','kinetic'],list:{telepath:{n:'读心者',d:'洞悉检定+2。'},kinetic:{n:'动能师',d:'力场法术伤害+1d4。'}}},
+  knight:{branch:['banner','castle'],list:{banner:{n:'掌旗官',d:'队友先攻+2。'},castle:{n:'堡垒骑士',d:'持盾AC共+2。'}}},
+  duelist:{branch:['fencers','brawlers'],list:{fencers:{n:'剑术大师',d:'细剑暴击范围19-20。'},brawlers:{n:'拳剑客',d:'徒手攻击获得优势。'}}},
 };
 function subOf(){return G.subcls||null;}
 function openSubclassModal(){
@@ -527,6 +562,16 @@ const MONSTERS={
   air_elemental:{n:'风元素',cr:3,ac:15,hp:78,spd:45,fly:1,atk:[{name:'风刀',tb:6,dmg:'2d4+4',type:'挥砍'}],loot:[40,140]},
   smoke_mech:{n:'蒸汽机兵',cr:4,ac:17,hp:85,spd:25,breath:{dc:14,abil:'dex',dmg:'4d6',type:'火焰',half:1,name:'锅炉过载',cool:3},atk:[{name:'黄铜铁拳',tb:7,dmg:'2d6+4',type:'钝击'}],loot:[60,200]},
   enforcer:{n:'齿轮执法者',cr:5,ac:18,hp:96,spd:30,two:1,atk:[{name:'蒸汽链锯',tb:7,dmg:'2d8+4',type:'挥砍'}],loot:[80,260]},
+  direwolf:{n:'凶暴狼',cr:1,ac:14,hp:37,spd:50,tag:'beast',atk:[{name:'噬咬',tb:5,dmg:'2d6+3',type:'穿刺',prone:.3}],loot:[5,25]},
+  phase_spider:{n:'相位蜘蛛',cr:3,ac:13,hp:32,spd:30,fly:1,atk:[{name:'相位毒牙',tb:6,dmg:'1d10+3',type:'毒素'}],loot:[20,80]},
+  treant:{n:'树人守卫',cr:2,ac:16,hp:59,spd:25,two:1,atk:[{name:'重击枝干',tb:6,dmg:'2d6+4',type:'钝击'}],loot:[10,60]},
+  drider:{n:'蛛化精灵',cr:2,ac:16,hp:42,spd:30,atk:[{name:'诅咒之剑',tb:5,dmg:'1d8+3',type:'挥砍'},{name:'毒牙',tb:5,dmg:'1d6+3',type:'毒素'}],loot:[20,90]},
+  wight:{n:'尸妖',cr:3,ac:14,hp:45,spd:30,tag:'undead',atk:[{name:'生命吸收',tb:5,dmg:'1d8+3',type:'黯蚀'}],loot:[0,50]},
+  manticore:{n:'蝎尾狮',cr:3,ac:14,hp:68,spd:30,fly:1,two:1,atk:[{name:'撕咬',tb:5,dmg:'1d8+3',type:'穿刺'},{name:'毒尾刺',tb:5,dmg:'1d8+3',type:'穿刺',rng:5}],loot:[30,120]},
+  gorgon:{n:'钢铁魔牛',cr:5,ac:14,hp:114,spd:40,breath:{dc:13,abil:'con',dmg:'3d8',type:'毒素',half:1,name:'石化吐息',cool:4},atk:[{name:'铁蹄',tb:7,dmg:'2d8+4',type:'钝击'}],loot:[60,200]},
+  crystal_golem:{n:'晶化魔像',cr:6,ac:17,hp:98,spd:25,two:1,atk:[{name:'晶拳',tb:7,dmg:'2d6+4',type:'钝击'},{name:'晶刺散射',tb:7,dmg:'1d8+4',type:'穿刺',rng:5}],loot:[80,260]},
+  iron_golem:{n:'铁魔像',cr:7,ac:19,hp:126,spd:25,two:1,atk:[{name:'熔炉铁拳',tb:8,dmg:'2d8+5',type:'钝击'}],loot:[100,350]},
+  mist_horror:{n:'雾魇',cr:5,ac:13,hp:70,spd:30,fly:1,tag:'undead',atk:[{name:'雾化撕扯',tb:6,dmg:'2d6+3',type:'黯蚀'}],loot:[0,80]},
 };
 
 
@@ -744,6 +789,7 @@ function defaultState(){
     fog:{},shards:0,
     encounterCd:0,kills:0,days:1,
     bounty:null,
+    money:{cp:0,sp:0,gp:0,sc:0},
     settings:{sound:true,bgm:true},
     log:[]
   };
@@ -774,7 +820,7 @@ function armorObj(){const e=G.equip.armor;return e?ITEMS[e]:null;}
 function computeAC(){
   const a=armorObj();
   let ac=a?a.ac+Math.min(mod('dex'),a.dexcap):10+mod('dex');
-  if(G.equip.shield)ac+=2;
+  if(G.equip.shield)ac+=2+(G.cls==='knight'?(G.subcls==='castle'?2:1):0);
   const ai=armorInst();if(ai&&ai.acB)ac+=ai.acB;
   if(G.equip.trinket==='dragonorb')ac+=0;
   return ac;
@@ -831,7 +877,98 @@ function removeItem(id,qty){qty=qty||1;
   if(i<0)return false;
   G.inv[i].qty-=qty;if(G.inv[i].qty<=0)G.inv.splice(i,1);return true;
 }
-function gainGold(n){G.gold+=n;Game.log((n>=0?'获得':'失去')+' '+Math.abs(n)+' 金币','gain');if(n>0)SFX.play('coin');renderTopbar();}
+function gainGold(n){
+  if(n>=0){gainMoney({gp:n});SFX.play('coin');}
+  else{
+    if(!spendCopper(Math.round(-n*worldRates().gp))){toast('金币不足');return;}
+    SFX.play('coin');
+  }
+  Game.log((n>=0?'获得':'花费')+' '+Math.abs(n)+' 金币（'+moneyText(true)+'）','gain');
+  renderTopbar();
+}
+
+/* ---- 货币系统：铜/银/金/星晶，汇率随世界演化 ---- */
+const CUR_NAMES={cp:'铜币',sp:'银币',gp:'金币',sc:'星晶'};
+function ensureMoney(){if(!G.money||typeof G.money!=='object')G.money={cp:0,sp:0,gp:0,sc:0};}
+function worldRates(){
+  const r=WorldEnv&&WorldEnv.rate||{};
+  return {cp:1, sp:10*(r.sp||1), gp:100*(r.gp||1), sc:10000*(r.sc||1)};
+}
+function totalCopper(){
+  ensureMoney();
+  const r=worldRates();
+  return Math.floor((G.money.cp||0)*r.cp+(G.money.sp||0)*r.sp+(G.money.gp||0)*r.gp+(G.money.sc||0)*r.sc);
+}
+function syncGold(){G.gold=Math.floor(totalCopper()/worldRates().gp);}
+function moneyText(short){
+  ensureMoney();
+  const g=G.money;
+  if(short){
+    const p=[];
+    if(g.sc>0)p.push(g.sc+'星晶');
+    if(g.gp>0)p.push(g.gp+'金');
+    if(g.sp>0&&p.length<2)p.push(g.sp+'银');
+    if(p.length<2&&g.cp>0)p.push(g.cp+'铜');
+    return p.join(' ')||'0铜';
+  }
+  return g.sc+' 星晶 · '+g.gp+' 金 · '+g.sp+' 银 · '+g.cp+' 铜';
+}
+function priceText(cpValue){
+  const r=worldRates();
+  const v=Math.max(0,Math.round(cpValue));
+  let sc=Math.floor(v/r.sc),rest=v%r.sc;
+  let gp=Math.floor(rest/r.gp);rest%=r.gp;
+  let sp=Math.floor(rest/r.sp);rest%=r.sp;
+  const parts=[];
+  if(sc)parts.push(sc+'星晶');
+  if(gp)parts.push(gp+'金');
+  if(sp)parts.push(sp+'银');
+  if(rest||!parts.length)parts.push(rest+'铜');
+  return parts.join(' ');
+}
+function gainMoney(o){
+  ensureMoney();
+  for(const k in o)G.money[k]=(G.money[k]||0)+Math.round(o[k]);
+  syncGold();
+}
+function spendCopper(cpNeed){
+  ensureMoney();
+  let need=cpNeed;
+  const r=worldRates();
+  const order=['cp','sp','gp','sc'];
+  for(const k of order){
+    const per=r[k];
+    let take=Math.min(G.money[k]||0,Math.ceil(need/per));
+    if(take>0){G.money[k]-=take;need-=take*per;}
+    if(need<=0)break;
+  }
+  syncGold();
+  return need<=0;
+}
+function goldToCopper(gp){return Math.round(gp*worldRates().gp*(WorldEnv.mod.price||1));}
+function gainMixedCoins(gold){
+  let cp=Math.round(gold*worldRates().gp);
+  const r=worldRates();
+  const out={cp:0,sp:0,gp:0,sc:0};
+  if(cp>=r.sc&&R.chance(.3)){out.sc=Math.floor(cp/r.sc);cp%=r.sc;}
+  if(cp>=r.gp){out.gp=Math.floor(cp/r.gp);cp%=r.gp;}
+  if(cp>=r.sp){out.sp=Math.floor(cp/r.sp);cp%=r.sp;}
+  out.cp=cp;
+  gainMoney(out);
+  if(out.sc>0)Game.log('出现了星晶！'+out.sc+'枚，'+(out.gp?out.gp+'金':'')+(out.sp?out.sp+'银':'')+(out.cp?out.cp+'铜':''),'gain');
+}
+function gainMixedCoins(gold){
+  let cp=Math.round(gold*worldRates().gp);
+  const r=worldRates();
+  const out={cp:0,sp:0,gp:0,sc:0};
+  if(cp>=r.sc&&R.chance(.3)){out.sc=Math.floor(cp/r.sc);cp%=r.sc;}
+  if(cp>=r.gp){out.gp=Math.floor(cp/r.gp);cp%=r.gp;}
+  if(cp>=r.sp){out.sp=Math.floor(cp/r.sp);cp%=r.sp;}
+  out.cp=cp;
+  gainMoney(out);
+  if(out.sc>0)Game.log('出现了星晶！'+out.sc+'枚，'+(out.gp?out.gp+'金':'')+(out.sp?out.sp+'银':'')+(out.cp?out.cp+'铜':''),'gain');
+}
+function exchangeFee(){return 0.04+ (WorldEnv.mod.fee||0);}
 function gainXp(n){
   G.xp+=n;Game.log('获得 '+n+' 经验值','gain');
   while(G.level<10&&G.xp>=XP_TABLE[G.level+1])levelUp();
@@ -986,7 +1123,8 @@ const Game={
     const ar=c.gear.find(x=>ITEMS[x[0]].type==='armor');if(ar)G.equip.armor=ar[0];
     const sh=c.gear.find(x=>ITEMS[x[0]].type==='shield');if(sh)G.equip.shield=sh[0];
     G.hp=G.hpMax;
-    G.gold=25+R.ri(0,10);
+    G.money={cp:0,sp:0,gp:25+R.ri(0,10),sc:0};
+    G.gold=Math.floor(totalCopper()/worldRates().gp);
     if(c.spells)G.spells=c.spells.filter(sid=>SPELLS[sid].lvl<=1);
     else G.spells=[];
     G.healPool=c===CLASSES.cleric||G.cls==='cleric'?G.level*3:0;
@@ -1024,6 +1162,7 @@ const Game={
       if(!G.bounty)G.bounty=null;
       if(!G.planesUnlocked)G.planesUnlocked={material:true};
       if(!G.settings)G.settings={sound:true,bgm:true};
+      if(!G.money||typeof G.money!=='object'){G.money={cp:0,sp:0,gp:0,sc:0};G.money.gp=Math.max(0,G.gold||0);}
       switchTab('story');
       showGameUI();
       $('combatBar').classList.add('hidden');
@@ -1392,6 +1531,17 @@ const NPCS={
           Game.log('龙牙在淬火中泛出雷光。【龙牙长枪】铸成！','gain');SFX.play('level');
         }});
       }
+      if(!f('bloom2done')){
+        const io=G.inv.find(x=>x.id==='iron_ore');
+        if(io&&io.qty>=5){
+          opts.push({t:'支援军备竞赛（交付铁矿石×5）',fn:()=>{
+            removeItem('iron_ore');removeItem('iron_ore');removeItem('iron_ore');removeItem('iron_ore');removeItem('iron_ore');
+            setF('bloom2done');Game.qdone('bloom2');gainXp(450);gainGold(80);giveItem('battleaxe');
+            Game.log('「铁料管够！这柄战斧拿去，军需官的差事以后都算你一份。」','gain');
+            return node('（锻炉商店永久九折——在布洛姆这里）',[{t:'（获得战斧·锻造折扣）',fn:null}]);
+          }});
+        }
+      }
       opts.push({t:'告辞。',fn:null});
       return node('布洛姆头也不抬：「火不熄，锤不停。'+G.name+'，要买东西还是听锤子说话？」',opts);
     }},
@@ -1414,6 +1564,22 @@ const NPCS={
           return node('「干得好。药我送去了，人情你收着——这几瓶药水给你。」',[{t:'（获得强效治疗药水×2）',fn:null}]);
         }});
       }
+      if(!f('mag2done')&&G.level>=3){
+        opts.push({t:'「教我点更深的药剂学吧。」',fn:()=>{
+          Game.qst('mag2',1);
+          return node('「月露草粉两瓶、磨骨粉三份。凑齐了，我的蓝瓶配方就是你的。」',[{t:'领命。',fn:null}]);
+        }});
+      }else if(!f('mag2done')){
+        const hd=G.inv.filter(x=>x.id==='herbdust').reduce((a,x)=>a+x.qty,0);
+        const bp=G.inv.filter(x=>x.id==='bone_powder').reduce((a,x)=>a+x.qty,0);
+        if(hd>=2&&bp>=3){
+          opts.push({t:'交付药剂进阶材料',fn:()=>{
+            removeItem('herbdust');removeItem('herbdust');removeItem('bone_powder');removeItem('bone_powder');removeItem('bone_powder');
+            setF('mag2done');Game.qdone('mag2');gainXp(500);giveItem('potion_greater',2);
+            return node('「蓝瓶配方，三火熬九滚。拿好。」（麦格药篮上架强效治疗药水）',[{t:'（获得强效药水×2）',fn:null}]);
+          }});
+        }
+      }
       opts.push({t:'告辞。',fn:null});
       return node('麦格眯起眼：「草药不骗人，人才骗人。买药吗，年轻人？」',opts);
     }},
@@ -1433,6 +1599,12 @@ const NPCS={
           Game.qdone('finn1');gainXp(300);setF('luckcharm');giveItem('luckcharm');
           Game.log('芬恩连夜谱成《星陨行者》。你感到灵感涌动——所有检定+1！','gain');
           return node('「这首歌会跟着你走遍位面。它叫《星陨行者》。」',[{t:'（获得灵感徽章）',fn:null}]);
+        }});
+      }
+      if(!f('finn2done')&&f('planeVisited')){
+        opts.push({t:'「我刚从位面彼端回来。」',fn:()=>{
+          setF('finn2done');Game.qdone('finn2');gainXp(400);gainGold(50);
+          return node('他听完你的见闻，写下《诸界旅人》。「这首歌，唱的是你。」',[{t:'（获得50金币）',fn:null}]);
         }});
       }
       opts.push({t:'听传闻（5金币，随机传闻）',fn:()=>{
@@ -1648,6 +1820,24 @@ const NPCS={
           }
           return node('「材料不齐。魔物阶位越高，材料越肥——去猎吧。」',[{t:'继续收集。',fn:null}]);
         }});
+      }
+      if(!f('skyroad')&&(G.quests.sam2&&!G.quests.sam2.done)){
+        const vd=G.inv.filter(x=>x.id==='void_dust').reduce((a,x)=>a+x.qty,0);
+        const gs=G.inv.filter(x=>x.id==='glyph_shard').reduce((a,x)=>a+x.qty,0);
+        opts.push({t:'「天路材料进度（尘埃'+Math.min(vd,3)+'/3，符文'+Math.min(gs,2)+'/2）」',fn:()=>{
+          if(vd>=3&&gs>=2){
+            removeItem('void_dust');removeItem('void_dust');removeItem('void_dust');
+            removeItem('glyph_shard');removeItem('glyph_shard');
+            Game.qdone('sam2');gainXp(800);gainMoney({sc:1});setF('skyroad');
+            return node('「点火——升空！」天路的信标次第亮起，贯穿东境与码头。他塞给你一枚星晶。',[{t:'（天路开启！获得星晶×1）',fn:null}]);
+          }
+          return node('「尘埃与符文，缺一不可。」',[{t:'继续收集。',fn:null}]);
+        }});
+      }else if(!f('skyroad')){
+        opts.push({t:'「天路还能重开吗？」',fn:()=>{
+          Game.qst('sam2',1);
+          return node('「虚空尘埃润滑齿轮，符文碎片重绘航线。各带三份与两份来，天路就通了——东境港和码头之间，飞艇免费。」',[{t:'「我去收集。」',fn:null}]);
+        }});
       }else{
         opts.push({t:'维修/改造（50金币，恢复全部生命）',fn:()=>{
           if(G.gold<50){Game.log('金币不足。');return;}
@@ -1713,6 +1903,10 @@ const QUESTS={
   deep1:{n:'幽暗矿道（深鳞商人）',type:'支线',stages:['清剿幽暗矿道的暗幕怪']},
   arch1:{n:'耐瑟启蒙录（档案馆）',type:'支线',stages:['寻回三卷《耐瑟启蒙录》','向梅洛迪复命']},
   sam1:{n:'移动灯塔（发明家塞缪尔）',type:'支线',stages:['收集魔兽核心×3、符文碎片×2与150金币','交予塞缪尔']},
+  sam2:{n:'天路重启（发明家塞缪尔）',type:'支线',stages:['收集虚空尘埃×3、符文碎片×2','修复飞艇航线']},
+  mag2:{n:'药剂学进阶（老麦格）',type:'支线',stages:['交付月露草粉×2与磨骨粉×3','解锁强效药水配方']},
+  finn2:{n:'位面歌谣（芬恩）',type:'支线',stages:['到访任意外位面后回到芬恩处']},
+  bloom2:{n:'军备竞赛（布洛姆）',type:'支线',stages:['交付铁矿石×5','获得锻造折扣与奖励']},
   stones:{n:'石阵的坐标',type:'支线',stages:['在古老石阵解读位面坐标（智力DC14）']},
   orb:{n:'龙魂低语',type:'支线',stages:['探索龙裔废墟，寻得龙息宝珠']},
 };
@@ -1759,11 +1953,12 @@ const SHOPS={
 };
 function openShop(shopId){
   const s=SHOPS[shopId];
+  if(shopId==='herb'&&f('mag2done')&&s.list.indexOf('potion_greater')<0)s.list.push('potion_greater');
   let html='<h3 class="text-lg font-bold text-ink mb-2">'+esc(s.n)+'</h3>';
-  html+='<div class="text-xs text-parch-700 mb-2">你的金币：'+G.gold+'</div><div class="space-y-1">';
+  html+='<div class="text-xs text-parch-700 mb-2">你的财富：'+moneyText(true)+'</div><div class="space-y-1">';
   s.list.forEach(id=>{
     const it=ITEMS[id];
-    html+='<div class="flex items-center gap-2 card"><div class="flex-1"><b>'+esc(it.n)+'</b> <span class="text-xs text-parch-600">'+(it.desc||'')+'</span></div><div class="text-xs">'+it.price+'金</div><button class="btn" onclick="buyItem(\''+shopId+'\',\''+id+'\')">买</button></div>';
+    html+='<div class="flex items-center gap-2 card"><div class="flex-1"><b>'+esc(it.n)+'</b> <span class="text-xs text-parch-600">'+(it.desc||'')+'</span></div><div class="text-xs">'+priceText(goldToCopper(it.price))+'</div><button class="btn" onclick="buyItem(\''+shopId+'\',\''+id+'\')">买</button></div>';
   });
   html+='</div><div class="mt-3 text-xs text-parch-600">出售：背包中的装备与药水按半价回收（在背包页点击出售）。</div>';
   html+='<div class="text-right mt-3"><button class="btn" onclick="closeModal()">离开</button></div>';
@@ -1771,8 +1966,9 @@ function openShop(shopId){
 }
 function buyItem(shopId,id){
   const it=ITEMS[id];
-  if(G.gold<it.price){toast('金币不足');return;}
-  gainGold(-it.price);giveItem(id);SFX.play('coin');
+  const cost=goldToCopper(it.price);
+  if(totalCopper()<cost){toast('财富不足');return;}
+  spendCopper(cost);gainMoney({});giveItem(id);SFX.play('coin');
   if(shopId==='trade')Game.favAdd('trade',1);
   openShop(shopId);
   renderStory();
@@ -1827,7 +2023,7 @@ const Combat={
     this.theme=cfg.theme||regionAt(G.x,G.y).id;
     this.retreatedPos={x:G.x,y:G.y};
     this.arena=this.buildArena(this.theme);
-    this.units=[];this.turn=0;this.round=1;this.moved=false;this.acted=false;this.phase='move';this.curSel=null;
+    this.units=[];this.turn=0;this.round=1;this.moved=false;this.acted=false;this.phase='move';this.curSel=null;this._witchDone=false;
     // 玩家单位
     this.units.push(this.makePlayerUnit());
     // 敌人
@@ -1919,6 +2115,13 @@ const Combat={
     if(!u||u.dead){this.nextTurn();return;}
     u.oaDone=false;
     if(u.side==='e'){this.intent(u);this.enemyAct(u);return;}
+    // 女巫诅咒：每场战斗首回合标记一名敌人
+    if(G.cls==='witch'&&!this._witchDone){
+      this._witchDone=true;
+      const e=this.units.find(x=>x.side==='e'&&!x.dead);
+      if(e){e.ac-=1;e.cond.hexed=1;Game.log('女巫之咒降临——'+e.name+' 战力受损！','combat');}
+    }
+    if(G.cls==='warlock'&&G.subcls==='chain'){const h=R.roll('2d4');u.hp=Math.min(u.hpMax,u.hp+h);G.hp=u.hp;Game.log('契约伙伴治愈了你 '+h+' 点生命。','gain');}
     // 玩家回合
     this.moved=false;this.acted=false;this.phase='move';this.reach=null;
     if(u.hp<=0){this.deathSave(u);return;}
@@ -2110,6 +2313,7 @@ const Combat={
     if(def.hp<=0)return;
     if(def.player&&type==='火焰'&&(G.race==='tiefling'||G.flags.fireRes===G.day))dmg=Math.floor(dmg/2);
     if(def.player&&def.rageTough&&(type==='挥砍'||type==='穿刺'||type==='钝击'))dmg=Math.max(0,dmg-1);
+    if(def.player&&G.cls==='shaman'&&(type==='挥砍'||type==='穿刺'||type==='钝击'))dmg=Math.max(0,dmg-(G.subcls==='earth'?2:1));
     def.hp-=dmg;
     SFX.play('hit');
     Game.log((def.player?'你':def.name)+'受到 '+dmg+' 点'+(type||'')+'伤害（HP '+Math.max(0,def.hp)+'/'+def.hpMax+'）','combat');
@@ -2156,9 +2360,10 @@ const Combat={
         const [a,b]=u.m.loot||[0,0];gold+=R.ri(a,b);
       });
       if(lootB)gold=Math.round(gold*1.2);
+      // 铸币：按总额随机成 铜/银/金/星晶
+      gainMixedCoins(gold);
       Game.log('—— 战斗胜利！——','combat');
-      gainGold(gold);
-      if(gold>0)Game.log('搜刮战利品，得到 '+gold+' 金币。','gain');
+      if(gold>0)Game.log('搜刮战利品，得到 '+priceText(Math.round(gold*worldRates().gp))+'。','gain');
       gainXp(xp);
       // 随机掉落
       if(R.chance(.18))giveItem(R.pick(TREASURE_ITEMS));
@@ -2580,7 +2785,8 @@ function timeTick(){
 }
 /* ---- 世界自主衍化 ---- */
 const WorldEnv={
-  mod:{enc:1,price:1},
+  mod:{enc:1,price:1,fee:0.00},
+  rate:{sp:1,gp:1,sc:1},
   events:[
     {d:2,t:()=>{G.flags.day2=true;Game.log('【世界·第2天】灰烬要塞的远征队开赴霜脊，雪原的兽人迁移了。','sys');}},
     {d:3,t:()=>{Game.log('【世界·第3天】东境渔汛暴减——港口开始高价收购深渊夜明珠。','sys');}},
@@ -2589,7 +2795,12 @@ const WorldEnv={
     {d:12,t:()=>{Game.log('【世界·第12天】耐瑟天空城的轮廓在云后愈发清晰，各地占星师陷入狂喜。','sys');}},
     {d:16,t:()=>{WorldEnv.mod.price=1.2;Game.log('【世界·第16天】战备令下，全境物价上涨两成。','sys');}},
     {d:21,t:()=>{WorldEnv.mod.enc=1.1;Game.log('【世界·第21天】位面裂隙扩大，异界生物渗入荒野。','sys');}},
+    {d:10,t:()=>{WorldEnv.rate.sp=1.08;Game.log('【世界·第10天】霜脊银矿回暖，银币升值（1银=10.8铜）。','sys');}},
+    {d:16,t:()=>{WorldEnv.rate.gp=1.06;Game.log('【世界·第16天】战备令下，金币需求暴涨（1金=10.6银）。','sys');}},
+    {d:24,t:()=>{WorldEnv.mod.fee=0.01;Game.log('【世界·第24天】商盟注资钱庄，兑换手续费上调1%。','sys');}},
     {d:30,t:()=>{Game.log('【世界·第30天】新月镇立起了第一座星陨纪念碑。','sys');}},
+    {d:36,t:()=>{WorldEnv.rate.sc=0.92;Game.log('【世界·第36天】天空城现世，星晶大幅贬值（1星晶=92金）。','sys');}},
+    {d:45,t:()=>{WorldEnv.rate.gp=1.0;WorldEnv.mod.price=1.0;Game.log('【世界·第45天】诸界贸易协定签订，汇率与物价趋于平稳。','sys');}},
   ],
   dayTick(){
     const ev=WorldEnv.events.find(e=>e.d===G.day);
@@ -2623,7 +2834,7 @@ function tryMove(dx,dy){
   renderAll();
 }
 function wildEvent(){
-  const evs=['shrine','cache','trap','rumor','lore','lore'];
+  const evs=['shrine','cache','trap','rumor','lore','lore','caravan','exile','miasma','oldfield','spring','vein'];
   if(f('finnQ')&&(G.flags.pageCount||0)<3)evs.push('page','page');
   if(f('magQ')&&(G.flags.herbCount||0)<3)evs.push('herb');
   if(f('bloomQ')&&!hasItem('ore'))evs.push('ore');
@@ -2638,7 +2849,7 @@ function wildEvent(){
       break;}
     case 'cache':{
       Game.log('你发现了一处旅人遗落的行囊。','gain');
-      gainGold(R.ri(5,40));
+      gainMixedCoins(R.ri(5,40));
       if(R.chance(.3))giveItem(R.pick(TREASURE_ITEMS));
       break;}
     case 'trap':{
@@ -2656,6 +2867,41 @@ function wildEvent(){
     case 'page':G.flags.pageCount=(G.flags.pageCount||0)+1;giveItem('page');break;
     case 'herb':G.flags.herbCount=(G.flags.herbCount||0)+1;giveItem('herb');break;
     case 'ore':giveItem('ore');break;
+    case 'caravan':{
+      Game.log('一队行商在路边支起帐篷。','sys');
+      const ok=G.gold===Math.max(0,G.gold)&&G.gold>=0;
+      if(R.chance(.5)&&totalCopper()>0){const c=Math.min(200,totalCopper());gainMixedCoins(Math.floor(c/worldRates().gp));Game.log('你替他们驱赶了狼群，商队酬谢了你。','gain');}
+      else Game.log('商队需要赶路，匆匆与你道别。');
+      break;}
+    case 'exile':{
+      Game.log('一位流亡者蜷在路旁：「主物质位面已经没有我的家了……」','sys');
+      const r=Game.check('洞悉',11);
+      if(r.ok){gainXp(80);Game.log('你给了他食物与祝福。他消失在了雾中。','gain');}
+      else gainXp(30);
+      break;}
+    case 'miasma':{
+      Game.log('紫色的瘴气漫过路面！','combat');
+      const ok=Game.saveThrow('con',12);
+      if(!ok){const d=R.roll('2d6');G.hp=Math.max(0,G.hp-d);Game.log('瘴气灼伤了你，损失'+d+'点生命。','combat');renderTopbar();if(G.hp<=0){G.hp=0;gameOverModal();}}
+      else Game.log('你屏息穿过了瘴气。');
+      break;}
+    case 'oldfield':{
+      Game.log('古战场的残矛仍插在土里。','sys');
+      const r=Game.check('调查',12);
+      if(r.ok){giveItem(R.pick(['iron_ore','glyph_shard','beast_core']));gainXp(60);Game.log('你从残骸中翻出了可用之物。','gain');}
+      else Game.log('这里只剩生锈的空壳。');
+      break;}
+    case 'spring':{
+      Game.log('一汪泉水在石间泛着微光。','sys');
+      G.hp=Math.min(G.hpMax,G.hp+R.roll('2d6'));
+      Game.log('泉水甘甜，你恢复了生命。','gain');renderTopbar();
+      break;}
+    case 'vein':{
+      Game.log('岩壁上露出一条矿脉。','sys');
+      const r=Game.check('生存',12);
+      if(r.ok){giveItem('iron_ore',R.ri(1,3));gainXp(50);Game.log('你凿下几块矿石。','gain');}
+      else Game.log('矿脉太深，你放弃了。');
+      break;}
   }
 }
 function rollEncounter(){
@@ -2714,6 +2960,7 @@ function travelTo(plane){
   Game.log('你穿越位面之门，抵达【'+PLANES[plane].n+'】。','quest');
   const cmap={astral:'astralsea',elemental:'elements',shadow:'shadowland',fey:'summer'};
   if(cmap[plane])codexMark(cmap[plane]);
+  if(plane!=='material')setF('planeVisited');
   banner(PLANES[plane].n);
   renderAll();
   if(scene)scene.refreshAll();
@@ -2804,6 +3051,12 @@ function showLocMenu(loc){
     else acts.push({t:'检查祭坛（需要4枚碎片）',fn:()=>{closeModal();Game.log('四道凹槽中只有 '+G.shards+' 枚碎片在发光。门扉沉默不语。');}});
   }
   /* ---- 扩展地点行为 ---- */
+  if(loc.id==='airship'&&f('skyroad')&&G.plane==='material'){
+    acts.push({t:'搭乘飞艇前往东境港（快速旅行）',fn:()=>{closeModal();G.x=46;G.y=17;banner('飞艇降落在东境港');Game.log('飞艇掠过云海，你看见整片艾瑟洛斯在脚下铺开。','sys');timeTick();revealFog();renderAll();if(scene)scene.refreshAll();}});
+  }
+  if(loc.id==='eastport'&&f('skyroad')){
+    acts.push({t:'搭乘飞艇前往飞艇码头（快速旅行）',fn:()=>{closeModal();G.x=11;G.y=17;banner('飞艇降落在飞艇码头');Game.log('黄铜的轰鸣声中，天路在你身后重新亮起。','sys');timeTick();revealFog();renderAll();if(scene)scene.refreshAll();}});
+  }
   if(loc.id==='airship'){
     if(!f('enforcerDead')){
       acts.push({t:'击退失控的齿轮执法者（精英首领战）',fn:()=>{
@@ -3245,7 +3498,7 @@ function renderTopbar(){
   $('tbHP').style.width=Math.max(0,G.hp/G.hpMax*100)+'%';
   $('tbHPn').textContent=G.hp+'/'+G.hpMax;
   $('tbAC').textContent=computeAC();
-  $('tbGold').textContent=G.gold;
+  $('tbGold').textContent=moneyText(true);
   $('tbShard').textContent=G.shards;
 }
 function renderStory(){
@@ -3332,7 +3585,7 @@ function renderChar(box){
   box.innerHTML=html;
 }
 function renderInv(box){
-  let html='<div class="text-xs text-parch-700 mb-2">金币：<b class="text-yellow-700">'+G.gold+'</b> · 点击装备栏更换装备</div>';
+  let html='<div class="text-xs text-parch-700 mb-2">财富：<b class="text-yellow-700">'+moneyText(true)+'</b> <button class="btn" onclick="showCurrency()">货币</button></div>';
   const slots=[['weapon','武器'],['armor','护甲'],['shield','盾牌'],['trinket','饰品']];
   html+='<div class="grid grid-cols-2 gap-1 mb-2">';
   slots.forEach(([k,n])=>{
@@ -3487,11 +3740,38 @@ function renderSys(box){
   html+='<button class="btn btn-blue" onclick="rollDice(\'优势d20\',20,1)">优势d20</button>';
   html+='<button class="btn btn-blue" onclick="rollDice(\'劣势d20\',20,-1)">劣势d20</button>';
   html+='</div></div>';
+  html+='<div class="card"><b class="text-sm">货币体系</b><div class="mt-1 text-parch-700">持有：'+moneyText()+'</div><div class="text-parch-700">汇率：1银='+(worldRates().sp/1).toFixed(2)+'铜 · 1星晶='+(worldRates().sc/worldRates().gp).toFixed(0)+'金 · 物价系数×'+(WorldEnv.mod.price||1).toFixed(2)+'</div><button class="btn mt-1" onclick="showCurrency()">打开兑换所</button></div>';
   html+='<div class="card"><b class="text-sm">冒险统计</b><div class="mt-1 text-parch-700">历时 '+G.days+' 天 · 击杀 '+G.kills+' · 位面 '+Object.keys(G.planesUnlocked).length+'/6 · 星核 '+G.shards+'/4 · 典籍 '+CODEX.filter(function(c){return codexOpen(c.id);}).length+'/'+CODEX.length+'</div></div>';
   html+='<div class="card"><b class="text-sm">操作</b><div class="mt-1 text-parch-700">WASD/方向键或点击相邻格移动。走到地点图块触发事件。战斗中点击格子/敌人执行动作。</div></div>';
   html+='</div>';
   box.innerHTML=html;
 }
+window.showCurrency=function(){
+  ensureMoney();
+  const r=worldRates();
+  let html='<h3 class="text-lg font-bold text-ink mb-1">货币与汇率</h3>';
+  html+='<div class="text-sm mb-2">持有：<b>'+moneyText()+'</b></div>';
+  html+='<div class="card text-xs mb-2 leading-relaxed"><b>当前汇率（受世界事件影响）</b><div class="text-parch-700 mt-1">1银='+(r.sp/1).toFixed(2)+'铜 · 1金='+(r.gp/r.sp).toFixed(2)+'银 · 1星晶='+(r.sc/r.gp).toFixed(0)+'金</div><div class="text-parch-700">兑换手续费：'+(exchangeFee()*100).toFixed(0)+'%（世界安定度越高手续费越低）</div></div>';
+  html+='<div class="space-y-1">';
+  html+='<div class="card flex items-center gap-2 text-xs"><div class="flex-1">10银 → 1金</div><button class="btn" onclick="doExchange(\'sp2gp\')">兑换</button></div>';
+  html+='<div class="card flex items-center gap-2 text-xs"><div class="flex-1">1金 → 9银（扣1%手续费）</div><button class="btn" onclick="doExchange(\'gp2sp\')">兑换</button></div>';
+  html+='<div class="card flex items-center gap-2 text-xs"><div class="flex-1">100金 → 1星晶</div><button class="btn" onclick="doExchange(\'gp2sc\')">兑换</button></div>';
+  html+='<div class="card flex items-center gap-2 text-xs"><div class="flex-1">1星晶 → 95金（扣5%手续费）</div><button class="btn" onclick="doExchange(\'sc2gp\')">兑换</button></div>';
+  html+='</div>';
+  html+='<div class="text-right mt-3"><button class="btn" onclick="closeModal()">关闭</button></div>';
+  openModal(html);
+};
+window.doExchange=function(kind){
+  ensureMoney();
+  const fee=exchangeFee();
+  let ok=false;
+  if(kind==='sp2gp'&&(G.money.sp||0)>=10){G.money.sp-=10;G.money.gp=(G.money.gp||0)+1;ok=true;}
+  if(kind==='gp2sp'&&(G.money.gp||0)>=1){G.money.gp-=1;G.money.sp=(G.money.sp||0)+Math.floor(10*(1-fee));ok=true;}
+  if(kind==='gp2sc'&&(G.money.gp||0)>=100){G.money.gp-=100;G.money.sc=(G.money.sc||0)+1;ok=true;}
+  if(kind==='sc2gp'&&(G.money.sc||0)>=1){G.money.sc-=1;G.money.gp=(G.money.gp||0)+Math.floor(100*(1-fee));ok=true;}
+  if(ok){syncGold();SFX.play('coin');showCurrency();renderTopbar();}
+  else toast('货币不足');
+};
 window.toggleSound=function(){G.settings.sound=!G.settings.sound;renderStory();};
 window.toggleBgm=function(){G.settings.bgm=!G.settings.bgm;SFX.bgm(G.settings.bgm);renderStory();};
 window.rollDice=function(name,sides,adv){
