@@ -49,6 +49,15 @@ tailwind.config = {
   ::-webkit-scrollbar{width:10px;height:10px;}
   ::-webkit-scrollbar-track{background:#e4cf99;}
   ::-webkit-scrollbar-thumb{background:#7a5c33;border-radius:5px;}
+  @media (max-width:840px){
+    body{overflow:auto;}
+    .game-root{min-height:100vh;}
+    aside.panel{width:100% !important;height:44vh;flex:none;border-right:0;border-bottom:4px solid #5d452a;}
+    main.mappanel{height:56vh;flex:1;}
+    .tabbtn{font-size:11px;padding:4px 1px;}
+    .btn{padding:3px 7px;font-size:12px;}
+    header.hbar{flex-wrap:wrap;gap:4px;}
+  }
   .tabbtn{flex:1; text-align:center; padding:6px 2px; font-size:13px; cursor:pointer; border-bottom:3px solid transparent; color:#5d452a;}
   .tabbtn.on{border-bottom-color:#8a2f1d; color:#8a2f1d; font-weight:bold; background:rgba(255,250,235,.5);}
   .chip{border:1px solid #7a5c33; background:rgba(255,250,235,.4); color:#5d452a; font-size:11px; padding:2px 8px; border-radius:10px; cursor:pointer; transition:all .12s;}
@@ -70,7 +79,7 @@ tailwind.config = {
 
 <!-- ============ 游戏主界面 ============ -->
 <div id="gameUI" class="hidden h-screen w-screen flex-col">
-  <header class="parch-dark text-parch-100 flex items-center gap-3 px-3 py-1.5 text-sm border-b-4 border-parch-700 flex-none">
+  <header class="hbar parch-dark text-parch-100 flex items-center gap-3 px-3 py-1.5 text-sm border-b-4 border-parch-700 flex-none">
     <div class="font-bold text-parch-200 tracking-widest mr-2">艾瑟洛斯<span class="text-parch-400 text-xs ml-1">星陨大灾变</span></div>
     <div id="tbPlane" class="px-2 py-0.5 rounded bg-parch-800 border border-parch-600">主物质位面</div>
     <div id="tbTime" class="text-parch-300">第1天 · 清晨</div>
@@ -91,9 +100,9 @@ tailwind.config = {
       <button class="btn" id="btnHelp">帮助</button>
     </div>
   </header>
-  <div class="flex-1 flex min-h-0">
+  <div class="game-root flex-1 flex min-h-0">
     <!-- 左：羊皮纸叙事面板 -->
-    <aside class="w-[420px] flex-none parchment flex flex-col border-r-4 border-parch-700">
+    <aside class="panel w-[420px] flex-none parchment flex flex-col border-r-4 border-parch-700">
       <nav id="tabs" class="flex border-b-2 border-parch-600 flex-none">
         <div class="tabbtn on" data-tab="story">故事</div>
         <div class="tabbtn" data-tab="char">角色</div>
@@ -101,12 +110,13 @@ tailwind.config = {
         <div class="tabbtn" data-tab="spell">法术书</div>
         <div class="tabbtn" data-tab="quest">任务</div>
         <div class="tabbtn" data-tab="codex">典籍</div>
+        <div class="tabbtn" data-tab="best">图鉴</div>
         <div class="tabbtn" data-tab="sys">系统</div>
       </nav>
       <div id="tabContent" class="flex-1 overflow-y-auto p-3"></div>
     </aside>
     <!-- 右：Phaser3 画布 -->
-    <main class="flex-1 relative min-w-0 bg-black">
+    <main class="mappanel flex-1 relative min-w-0 bg-black">
       <div id="phaserHost" class="absolute inset-0"></div>
       <div id="locBanner" class="absolute top-3 left-1/2 hidden px-5 py-2 parchment border-2 border-parch-700 rounded-lg text-lg font-bold text-ink" style="transform:translateX(-50%)"></div>
       <div id="combatBar" class="absolute bottom-0 inset-x-0 hidden parchment border-t-4 border-parch-700 px-3 py-2"></div>
@@ -293,7 +303,7 @@ const SFX=(()=>{
 const ABILS=['str','dex','con','int','wis','cha'];
 const ABILN={str:'力量',dex:'敏捷',con:'体质',int:'智力',wis:'感知',cha:'魅力'};
 const SKILLS={运动:'str',杂技:'dex',巧手:'dex',隐匿:'dex',奥秘:'int',历史:'int',调查:'int',自然:'int',宗教:'int',察觉:'wis',生存:'wis',医药:'wis',驯兽:'wis',洞悉:'wis',欺瞒:'cha',威吓:'cha',表演:'cha',游说:'cha'};
-const XP_TABLE=[0,0,300,900,2700,6500,14000,23000,34000,48000,64000]; // 索引=等级
+const XP_TABLE=[0,0,300,900,2700,6500,14000,26000,45000,75000,120000]; // 索引=等级（递增收紧，控制升级节奏）
 const MON_XP={0.125:25,0.25:50,0.5:100,1:200,2:450,3:700,5:1800,7:2900,9:5000,12:8400};
 
 const RACES={
@@ -303,6 +313,11 @@ const RACES={
   halfling:{n:'半身人',asi:{dex:2,cha:1},trait:'幸运：攻击/属性/豁免掷出1可重掷一次；勇敢。',dark:0,lucky:1},
   dragonborn:{n:'龙裔',asi:{str:2,cha:1},trait:'龙息武器：2格锥形喷吐（短休恢复），火焰伤害抗性。',dark:0,breath:1,fireres:1},
   tiefling:{n:'提夫林',asi:{cha:2,int:1},trait:'黑暗视觉60尺；火焰伤害抗性；奥秘熟练。',dark:6,skill:'奥秘',fireres:1},
+  halfelf:{n:'半精灵',asi:{cha:2,dex:1},trait:'黑暗视觉60尺；魅惑豁免优势；额外获得1项技能熟练。',dark:6,skill2:1},
+  halforc:{n:'半兽人',asi:{str:2,con:1},trait:'残暴重击：暴击伤害追加一颗武器骰；黑暗视觉60尺。',dark:6,savage:1},
+  gnome:{n:'侏儒',asi:{int:2,dex:1},trait:'侏儒机敏：智力豁免优势；幻术抗性。',dark:6,gnome:1},
+  aasimar:{n:'神裔',asi:{cha:2,wis:1},trait:'天界血统：每长休一次，濒死时自动恢复1点生命。',dark:6,light:1},
+  warforged:{n:'战俑',asi:{con:2,str:1},trait:'构装体：AC+1；免疫毒素；无需呼吸。',dark:0,acbonus:1,poisonImmune:1},
 };
 const BGS={
   acolyte:{n:'侍僧',skills:['医药','宗教'],fav:'church',txt:'你曾在星辉修道院的烛火下抄写圣典。'},
@@ -339,6 +354,28 @@ const CLASSES={
     gear:[['longsword',1],['chainshirt',1],['shield',1]],
     feat:'神圣斩击：消耗1环法术位，命中后额外+2d8光耀伤害',color:'#9a7a3a',
     spells:['curewounds','lesserest','wrathfulsmite']},
+  barbarian:{n:'野蛮人',hd:12,saves:['str','con'],pool:['运动','威吓','察觉','生存','驯兽'],nskill:2,
+    prio:['str','con','dex','wis','cha','int'],casting:null,rage:1,
+    gear:[['greataxe',1]],feat:'狂暴：战斗中狂暴，伤害+2、受物理伤害-1（每日2次）。',color:'#8a3a2a'},
+  monk:{n:'武僧',hd:8,saves:['str','dex'],pool:['杂技','察觉','隐匿','宗教'],nskill:2,
+    prio:['dex','wis','con','str','cha','int'],casting:null,monk:1,
+    gear:[['quarterstaff',1]],feat:'气：移动速度+1格；徒手伤害d6；疾风连击（每日3次，额外徒手一击）。',color:'#d8b53a'},
+  druid:{n:'德鲁伊',hd:8,saves:['int','wis'],pool:['自然','生存','察觉','驯兽','医药'],nskill:2,
+    prio:['wis','dex','con','str','int','cha'],casting:'wis',castingHalf:true,
+    gear:[['quarterstaff',1],['herb',2]],feat:'野性变形：战斗开始AC+1；自然恩典：治愈类法术+2。',color:'#3f7a3a',
+    spells:['curewounds','healingword','lesserest','windblade']},
+  bard:{n:'吟游诗人',hd:8,saves:['dex','cha'],pool:['表演','游说','欺瞒','洞悉','历史','察觉'],nskill:3,
+    prio:['cha','dex','con','wis','int','str'],casting:'cha',
+    gear:[['rapier',1],['leather',1]],feat:'激励曲：战斗首回合全队先攻+1；万能巧手。',color:'#9a4a8a',
+    spells:['healingword','firebolt','rayfrost','lesserest']},
+  sorcerer:{n:'术士',hd:6,saves:['con','cha'],pool:['欺瞒','游说','奥秘','洞悉'],nskill:2,
+    prio:['cha','con','dex','wis','int','str'],casting:'cha',
+    gear:[['quarterstaff',1]],feat:'超魔法：戏法伤害+1；术法点爆发（长休一次，伤害法术骰翻倍）。',color:'#4a2a8a',
+    spells:['firebolt','rayfrost','magicmissile','scorchingray','fireball','lightningbolt']},
+  artificer:{n:'工匠师',hd:8,saves:['con','int'],pool:['奥秘','调查','巧手','历史'],nskill:2,
+    prio:['int','dex','con','wis','cha','str'],casting:'int',castingHalf:true,
+    gear:[['steamrifle',1],['leather',1]],feat:'蒸汽造物：枪械伤害+1；每日一次制造药水。',color:'#7a6a4a',
+    spells:['firebolt','magicmissile','shield','scorchingray']},
 };
 
 /* 法术（SRD数值） */
@@ -363,6 +400,40 @@ const SPELLS={
   flamestrike:{n:'焰击术',lvl:5,dmg:'8d6',type:'火焰',rng:12,save:'dex',half:1,area:1,cls:['cleric']},
   coneofcold:{n:'寒冰锥',lvl:5,dmg:'8d8',type:'冷冻',rng:1,save:'con',half:1,cone:1,cls:['wizard']},
   warpbolt:{n:'相位弹',lvl:2,dmg:'2d10',type:'力场',rng:12,atk:1,cls:['wizard']},
+};
+/* ---- 职业分支（3级解锁二选一） ---- */
+const SUBCLASS={
+  fighter:{branch:['champion','warlord'],list:{champion:{n:'冠军勇士',d:'重击范围提升为19-20；每场战斗首次攻击+2命中。'},warlord:{n:'战术大师',d:'全队先攻+1；战斗结束恢复1d8生命。'}}},
+  wizard:{branch:['evoker','scribe'],list:{evoker:{n:'塑能师',d:'火球/闪电束等范围法术伤害+1d6。'},scribe:{n:'书卷学者',d:'每场战斗一个1环法术不消耗法术位。'}}},
+  rogue:{branch:['assassin','scout'],list:{assassin:{n:'刺客',d:'战斗首回合命中必然暴击。'},scout:{n:'斥候',d:'移动+1格；野外遭遇率再降20%。'}}},
+  cleric:{branch:['holy','warpriest'],list:{holy:{n:'圣光牧师',d:'治疗法术+2。'},warpriest:{n:'战斗祭司',d:'使用武器攻击时伤害+1。'}}},
+  ranger:{branch:['beastmaster','stalker'],list:{beastmaster:{n:'兽王',d:'狼群、冬狼类敌人不会优先攻击你。'},stalker:{n:'追猎者',d:'对标记目标伤害+1d4。'}}},
+  paladin:{branch:['oathdev','oathven'],list:{oathdev:{n:'奉献之誓',d:'神圣斩击伤害+1d8。'},oathven:{n:'复仇之誓',d:'对首领以上敌人伤害+2。'}}},
+  barbarian:{branch:['berserker','totem'],list:{berserker:{n:'狂战士',d:'狂暴时伤害再+2。'},totem:{n:'图腾武士',d:'狂暴时AC+1。'}}},
+  monk:{branch:['openhand','shadowmonk'],list:{openhand:{n:'空手宗师',d:'徒手伤害提升为d8。'},shadowmonk:{n:'暗影宗',d:'战斗中对敌人先攻+2。'}}},
+  druid:{branch:['land','moon'],list:{land:{n:'大地结社',d:'治愈术额外+2。'},moon:{n:'月之结社',d:'战斗开始AC再+1。'}}},
+  bard:{branch:['lore','valor'],list:{lore:{n:'学识学院',d:'技能检定+1。'},valor:{n:'勇气学院',d:'战斗首回合攻击+1。'}}},
+  sorcerer:{branch:['draconic','wild'],list:{draconic:{n:'龙脉术士',d:'火焰法术伤害+1d4。'},wild:{n:'狂野魔法',d:'每次施法25%概率恢复1点法术位（1环）。'}}},
+  artificer:{branch:['gunsmith','alchemist'],list:{gunsmith:{n:'枪炮师',d:'枪械伤害再+1（共+2）。'},alchemist:{n:'炼金师',d:'每日长休自动获得1瓶治疗药水。'}}},
+};
+function subOf(){return G.subcls||null;}
+function openSubclassModal(){
+  const c=SUBCLASS[G.cls];
+  if(!c)return;
+  let html='<h3 class="text-lg font-bold text-ink mb-2">职业分支抉择</h3><p class="text-xs text-parch-700 mb-3">3级了。你的道路在此分叉——选择你的专精方向。</p><div class="space-y-1">';
+  c.branch.forEach(id=>{
+    const b=c.list[id];
+    html+='<button class="btn w-full text-left" onclick="pickSubclass(\''+id+'\')"><b>'+esc(b.n)+'</b> — '+esc(b.d)+'</button>';
+  });
+  html+='</div>';
+  openModal(html);
+}
+window.pickSubclass=function(id){
+  G.subcls=id;
+  const b=SUBCLASS[G.cls].list[id];
+  Game.log('你选择了分支【'+b.n+'】：'+b.d,'gain');
+  SFX.play('level');
+  closeModal();renderStory();
 };
 const SLOT_FULL={1:[2],2:[3],3:[4,2],4:[4,3],5:[4,3,2],6:[4,3,3],7:[4,3,3,1],8:[4,3,3,2],9:[4,3,3,3,1],10:[4,3,3,3,2]};
 const SLOT_HALF={1:[],2:[2],3:[3],4:[3],5:[4,2],6:[4,2],7:[4,3],8:[4,3],9:[4,3,1],10:[4,3,2]};
@@ -405,6 +476,10 @@ const ITEMS={
   dragonfang:{n:'龙牙长枪',type:'weapon',dmg:'1d10+1',rng:1,price:390,magic:1,desc:'附魔武器，命中时附加+1d4闪电'},
   mythallar:{n:'密瑟能核残片',type:'trinket',price:0,desc:'耐瑟浮空城之心。全检定+1，解锁新的终局之路'},
   nethertome:{n:'耐瑟启智法典',type:'trinket',price:0,desc:'研读后法术攻击+1（被动）'},
+  rapier:{n:'细剑',type:'weapon',dmg:'1d8',fin:1,rng:1,price:25},
+  steamrifle:{n:'蒸汽步枪',type:'weapon',dmg:'1d10',rng:8,ranged:1,price:120,desc:'黄铜与齿轮驱动的步枪，工匠师的心血。'},
+  steampistol:{n:'蒸汽手枪',type:'weapon',dmg:'1d8',rng:6,ranged:1,price:90,desc:'短管蒸汽枪，近距离的轰鸣。'},
+  gadget_bomb:{n:'爆裂装置',type:'potion',heal:'0',price:60,desc:'战斗中使用：对目标造成3d6火焰伤害（工匠师专属）'},
 };
 
 /* 怪物（SRD 数值） spd单位英尺 */
@@ -445,7 +520,155 @@ const MONSTERS={
   deep_terror:{n:'深渊触须兽',cr:6,ac:14,hp:98,spd:30,two:1,atk:[{name:'触须绞杀',tb:7,dmg:'2d6+4',type:'钝击'}],loot:[80,220]},
   dragon_shade:{n:'古龙之影',cr:8,ac:18,hp:125,spd:40,fly:1,two:1,boss:1,atk:[{name:'幽影龙爪',tb:8,dmg:'2d8+5',type:'挥砍'},{name:'残响龙尾',tb:8,dmg:'2d6+5',type:'钝击'}],breath:{dc:15,abil:'con',dmg:'6d8',type:'黯蚀',half:1,name:'龙息残响',cool:3},loot:[200,500]},
   lich_lord:{n:'浮空城主宰',cr:10,ac:17,hp:135,spd:30,fly:1,two:1,boss:1,atk:[{name:'噬魂之触',tb:8,dmg:'2d8+5',type:'黯蚀'},{name:'奥术暴雨',tb:8,dmg:'2d6+2',type:'力场',rng:6}],breath:{dc:16,abil:'dex',dmg:'8d8',type:'力场',half:1,name:'密瑟能爆',cool:3},loot:[0,0]},
+  gnoll:{n:'豺狼人',cr:0.5,ac:13,hp:22,spd:30,two:1,atk:[{name:'长矛',tb:4,dmg:'1d8+2',type:'穿刺'},{name:'锯齿咬',tb:4,dmg:'1d4+2',type:'穿刺'}],loot:[4,20]},
+  harpy:{n:'鹰身女妖',cr:1,ac:12,hp:30,spd:30,fly:1,atk:[{name:'利爪',tb:4,dmg:'2d4+2',type:'挥砍'}],loot:[0,15]},
+  owlbear:{n:'枭熊',cr:2,ac:13,hp:59,spd:35,two:1,atk:[{name:'熊抱',tb:6,dmg:'2d6+4',type:'钝击'},{name:'喙啄',tb:6,dmg:'1d10+4',type:'穿刺'}],loot:[15,60]},
+  basilisk:{n:'石化蜥蜴',cr:3,ac:12,hp:66,spd:30,breath:{dc:12,abil:'con',dmg:'2d8',type:'毒素',half:1,name:'石化凝视',cool:4},atk:[{name:'毒咬',tb:5,dmg:'1d6+3',type:'毒素'}],loot:[40,140]},
+  air_elemental:{n:'风元素',cr:3,ac:15,hp:78,spd:45,fly:1,atk:[{name:'风刀',tb:6,dmg:'2d4+4',type:'挥砍'}],loot:[40,140]},
+  smoke_mech:{n:'蒸汽机兵',cr:4,ac:17,hp:85,spd:25,breath:{dc:14,abil:'dex',dmg:'4d6',type:'火焰',half:1,name:'锅炉过载',cool:3},atk:[{name:'黄铜铁拳',tb:7,dmg:'2d6+4',type:'钝击'}],loot:[60,200]},
+  enforcer:{n:'齿轮执法者',cr:5,ac:18,hp:96,spd:30,two:1,atk:[{name:'蒸汽链锯',tb:7,dmg:'2d8+4',type:'挥砍'}],loot:[80,260]},
 };
+
+
+/* =====================================================
+   怪物阶位 · 变体 · 随机掉落 · 随机装备词缀 · 材料 · 图鉴
+===================================================== */
+const TIERS={
+  t0:{n:'普通',e:1,hp:1,ac:0,tb:0,xp:1,drop:1,color:'#7a7a72'},
+  t1:{n:'精英',e:1.9,hp:1.9,ac:1,tb:1,xp:1.6,drop:2.5,color:'#2a6ac0'},
+  t2:{n:'首领',e:3.4,hp:3.2,ac:2,tb:2,xp:2.6,drop:5,color:'#8a2a8a'},
+  t3:{n:'领主',e:6,hp:5.5,ac:3,tb:3,xp:4.5,drop:9,color:'#c04a00'},
+  t4:{n:'霸主',e:11,hp:10,ac:4,tb:5,xp:8,drop:16,color:'#c20f0f'},
+};
+const VARIANTS=[
+  {n:'荒原',eff:'hp',v:1.2,clr:'#c2a86a',type:null,desc:'生命力更顽强的个体。'},
+  {n:'狂怒',eff:'tb',v:1,clr:'#c04a2a',type:null,desc:'攻击更具杀伤。'},
+  {n:'熔火',eff:'type',v:0,clr:'#ff6a2a',type:'火焰',res:'火焰',desc:'伤口喷出火星，火焰难伤。'},
+  {n:'冰霜',eff:'type',v:0,clr:'#6ab8ff',type:'冷冻',res:'冷冻',desc:'气息凝成冰晶，寒冰难伤。'},
+  {n:'暗影',eff:'type',v:0,clr:'#5a4a8a',type:'黯蚀',res:'黯蚀',desc:'身形半透明，黯蚀难伤。'},
+  {n:'迅捷',eff:'spd',v:1.5,clr:'#4ac4a2',type:null,desc:'行动如风。'},
+  {n:'坚壳',eff:'ac',v:2,clr:'#9a8a6a',type:null,res:'穿刺',desc:'甲壳厚实。'},
+  {n:'剧毒',eff:'type',v:0,clr:'#4ac02a',type:'毒素',res:'毒素',desc:'爪牙浸透毒液。'},
+];
+function tierSpec(t){return TIERS['t'+(t|0)]||TIERS.t0;}
+function makeTierMonster(id,tier,vIdx){
+  const m=MONSTERS[id];if(!m)return null;
+  const t=tierSpec(tier),v=(vIdx!==undefined&&vIdx!==null)?VARIANTS[vIdx]:null;
+  const hp=Math.max(2,Math.round(m.hp*t.hp*(v&&v.eff==='hp'?v.v:1)));
+  const ac=m.ac+t.ac+(v&&v.eff==='ac'?v.v:0);
+  const tb=(m.atk[0].tb||0)+t.tb+(v&&v.eff==='tb'?v.v:0);
+  const spd=Math.round((m.spd||30)*(v&&v.eff==='spd'?v.v:1));
+  const name=(v?v.n:'')+(tier>0?((v)?'·':'')+t.n:'')+(v||tier>0?' ':'')+m.n;
+  const atk=m.atk.map(a=>{
+    const a2=Object.assign({},a);
+    if(v)a2.dmg=a.dmg;a2.tb=tb;if(v)a2.name=a.name;
+    return a2;
+  });
+  const unit={tid:id,name,tier,variant:v?VARIANTS.indexOf(v):null,hp,hpMax:hp,ac,tb,spd,
+    atk,cr:m.cr,boss:!!m.boss,two:!!m.two,fly:!!m.fly,tag:m.tag,breath:m.breath?Object.assign({},m.breath):null,
+    xp:Math.max(1,Math.round((MON_XP[m.cr]||50)*t.xp*(v?1.15:1)/(1+(G.level-1)*0.15))),
+    loot:m.loot?[Math.round(m.loot[0]*t.drop),Math.round(m.loot[1]*t.drop)]:[0,0],
+    col:v?v.clr:(tier>0?t.color:null)};
+  if(v&&v.type){unit.atk.forEach(a2=>{a2.type=v.type;});}
+  if(v&&v.res)unit.res=v.res;
+  return unit;
+}
+/* ---- 材料（怪物掉落/采集） ---- */
+const MATS={
+  beast_core:{n:'魔兽核心',price:18,type:'mat',desc:'凝聚魔力的晶核，锻造与炼金的基础材料。'},
+  bone_powder:{n:'磨骨粉',price:8,type:'mat',desc:'研磨亡灵遗骸得到的细粉，符文墨水的主要原料。'},
+  void_dust:{n:'虚空尘埃',price:30,type:'mat',desc:'位面裂隙边收集的微光尘粒，附魔师重金收购。'},
+  glyph_shard:{n:'符文碎片',price:25,type:'mat',desc:'破碎的耐瑟符文，仍带着微弱的魔力。'},
+  dragon_scale:{n:'龙鳞',price:60,type:'mat',desc:'龙类脱落的鳞片，最坚韧的锻造材料。'},
+  iron_ore:{n:'铁矿石',price:12,type:'mat',desc:'普通的矿石，炼钢的基础。'},
+  herbdust:{n:'月露草粉',price:15,type:'mat',desc:'炼金药剂的核心材料。'},
+};
+/* ---- 随机装备词缀（魔法武器/护甲生成） ---- */
+const AFFIXES=[
+  {n:'锋利的',slot:'wp',fx:u=>u.dmgMod=(u.dmgMod||0)+1,desc:'伤害+1'},
+  {n:'灼热的',slot:'wp',fx:u=>u.fire=true,desc:'命中附加1d4火焰'},
+  {n:'淬毒的',slot:'wp',fx:u=>u.poison=true,desc:'命中附加1d4毒素'},
+  {n:'雷鸣的',slot:'wp',fx:u=>u.thunder=true,desc:'命中附加1d4闪电'},
+  {n:'稳固的',slot:'ar',fx:u=>u.acB=(u.acB||0)+1,desc:'AC+1'},
+  {n:'轻盈的',slot:'ar',fx:u=>u.initB=(u.initB||0)+1,desc:'先攻+1'},
+  {n:'丰收的',slot:'any',fx:u=>u.lootB=true,desc:'战斗金币收益+20%'},
+];
+const QUALITY=['普通','精良','稀有','史诗','传说'];
+const Q_MUL=[1,1.15,1.3,1.5,1.8]; // 价格倍率
+const Q_XP=[1,1.2,1.4,1.7,2];
+/* 随机生成一件带词缀的装备（品质随阶位提升） */
+function rollLootWeapon(tier){
+  const pool=[['dagger',0.3],['shortsword',0.2],['longsword',0.18],['mace',0.12],['shortbow',0.15],['battleaxe',0.05]];
+  const roll=Math.random();let tot=0,pick='dagger';
+  for(const [id,w] of pool){tot+=w;if(roll<=tot){pick=id;break;}}
+  let q=0;
+  for(let i=0;i<=Math.min(4,tier+1);i++){if(R.chance(.35))q++;}
+  let sfx=null;
+  if(q>=2||R.chance(.2*tier)){const wp=AFFIXES.filter(a=>a.slot==='wp'||a.slot==='any');sfx=R.pick(wp).n;}
+  return {id:pick,inst:{q,sfx}};
+}
+function rollLootArmor(tier){
+  const pool=[['leather',0.35],['studded',0.3],['chainshirt',0.2],['shield',0.15]];
+  const roll=Math.random();let tot=0,pick='leather';
+  for(const [id,w] of pool){tot+=w;if(roll<=tot){pick=id;break;}}
+  let q=0;
+  for(let i=0;i<=Math.min(4,tier);i++){if(R.chance(.35))q++;}
+  let sfx=null;
+  if(q>=2||R.chance(.2*tier)){const ar=AFFIXES.filter(a=>a.slot==='ar'||a.slot==='any');sfx=R.pick(ar).n;}
+  return {id:pick,inst:{q,sfx}};
+}
+/* 怪物随机掉落（材料+装备） */
+function rollLoot(tier,m){
+  const t=tierSpec(tier);
+  const out=[];
+  const matTable=[['beast_core',.25],['bone_powder',.18],['void_dust',.12],['glyph_shard',.15],['iron_ore',.2],['herbdust',.1]];
+  if(m&&m.tag==='dragon')out.push(['dragon_scale',1]);
+  const nMat=Math.max(0,Math.round(t.drop*R.chance(.75)));
+  for(let i=0;i<nMat;i++){
+    const r=Math.random();let tot=0;
+    for(const [id,w] of matTable){tot+=w;if(r<=tot){out.push([id,1]);break;}}
+  }
+  if(R.chance(.12*t.drop))out.push([R.pick(['potion_heal','potion_fire']),1]);
+  if(R.chance(.07*t.drop)){const w=rollLootWeapon(tier);out.push([w.id,1,w.inst]);}
+  if(R.chance(.05*t.drop)){const a=rollLootArmor(tier);out.push([a.id,1,a.inst]);}
+  if(R.chance(.03*t.drop))out.push([R.pick(['dragonorb','scroll_magic']),1]);
+  return out;
+}
+/* 装备实例：名称/价格/加成 */
+function itemInst(it){return (it&&it.inst)||null;}
+function affixOf(n){return AFFIXES.find(a=>a.n===n);}
+function itemDisplayName(it){
+  const base=ITEMS[it.id]?ITEMS[it.id].n:'未知';
+  const inst=itemInst(it);
+  if(!inst)return base;
+  return (inst.sfx?inst.sfx+'·':'')+(inst.q>0?QUALITY[inst.q]+' ':inst.sfx?'':'')+base;
+}
+function itemBonusText(it){
+  const inst=itemInst(it);
+  if(!inst||!inst.sfx)return '';
+  const a=affixOf(inst.sfx);
+  return a?a.desc:'';
+}
+function itemPrice(it){
+  const base=(ITEMS[it.id]||MATS[it.id])?((ITEMS[it.id]||MATS[it.id]).price||0):0;
+  const inst=itemInst(it);
+  return inst?Math.round(base*Q_MUL[inst.q]):base;
+}
+function applyAffix(u,affix){
+  if(!affix)return u;
+  affix.fx(u);
+  return u;
+}
+/* ---- 图鉴 ---- */
+function bestiaryMark(u){
+  if(!G||u.player)return;
+  if(!G.bestiary)G.bestiary={};
+  const id=u.tid||u.m;
+  if(!G.bestiary[id])G.bestiary[id]={kills:0};
+  G.bestiary[id].kills++;
+  G.bestiary[id].tier=Math.max(G.bestiary[id].tier||0,u.tier||0);
+  G.bestiary[id].count=(G.bestiary[id].count||0)+1;
+}
 
 /* ---------------- 世界数据 ---------------- */
 const PLANES={
@@ -552,6 +775,7 @@ function computeAC(){
   const a=armorObj();
   let ac=a?a.ac+Math.min(mod('dex'),a.dexcap):10+mod('dex');
   if(G.equip.shield)ac+=2;
+  const ai=armorInst();if(ai&&ai.acB)ac+=ai.acB;
   if(G.equip.trinket==='dragonorb')ac+=0;
   return ac;
 }
@@ -588,9 +812,20 @@ function weaponOf(u){ // 战斗单位用
 function giveItem(id,qty){qty=qty||1;
   const it=G.inv.find(x=>x.id===id);
   if(it)it.qty+=qty;else G.inv.push({id,qty});
-  Game.log('获得【'+ITEMS[id].n+'】×'+qty,'gain');SFX.play('coin');
+  const base=ITEMS[id]||MATS[id];
+  Game.log('获得【'+(base?base.n:id)+'】×'+qty,'gain');SFX.play('coin');
 }
 function hasItem(id){return G.inv.some(x=>x.id===id&&x.qty>0);}
+function giveInst(id,qty,inst){
+  const same=x=>x.id===id&&!!x.inst===!!inst&&(!inst||(x.inst.sfx===inst.sfx&&x.inst.q===inst.q));
+  const it=G.inv.find(same);
+  if(it)it.qty+=qty;else G.inv.push(inst?{id,qty,inst}:{id,qty});
+}
+function parseAffixObj(name){const a=affixOf(name);if(!a)return null;const u={name:a.n};a.fx(u);return u;}
+function weaponInst(){const i=G.equip.weapInst;return i&&i.sfx?parseAffixObj(i.sfx):null;}
+function armorInst(){const i=G.equip.armorInst;return i&&i.sfx?parseAffixObj(i.sfx):null;}
+function weaponInitB(){const wi=weaponInst();return wi&&wi.initB?wi.initB:0;}
+function hasLootBonus(){const wi=weaponInst();return !!(wi&&wi.lootB);}
 function removeItem(id,qty){qty=qty||1;
   const i=G.inv.findIndex(x=>x.id===id);
   if(i<0)return false;
@@ -612,6 +847,8 @@ function levelUp(){
   Game.log('等级提升！你现在是 '+G.level+' 级，生命上限 +'+gain,'sys');
   if(newSpells.length)Game.log('领悟新法术：'+newSpells.map(s=>SPELLS[s].n).join('、'),'sys');
   SFX.play('level');toast('等级提升至 '+G.level+' 级！');
+  if(G.level===3&&!G.subcls){setTimeout(()=>{if(!Game.busy())openSubclassModal();},600);}
+  if(G.level===4&&G.subcls==='alchemist'){giveItem('potion_heal');Game.log('炼金师调制了一瓶治疗药水。','gain');}
 }
 
 function autoSave(){
@@ -937,6 +1174,7 @@ const LOCS=[
   {id:'dragonmaw',n:'龙墓',plane:'material',x:40,y:17,g:'龙',desc:'古龙陨落之地，白骨如城墙。龙魂的残响在骨山之间低语，寻找能读懂它的人。'},
   {id:'underdark',n:'幽暗地域入口',plane:'material',x:29,y:16,g:'洞',desc:'一处向下延伸的洞穴。黑暗浓稠如墨，深处有鳞片摩擦岩石的声音。'},
   {id:'n_gate',n:'归途传送环',plane:'nether',x:3,y:20,g:'环',desc:'耐瑟的黄金传送环，环绕着回响千年的密瑟能。'},
+  {id:'airship',n:'飞艇码头',plane:'material',x:11,y:17,g:'艇',desc:'黄铜烟囱与氢气袋组成的码头。发明家们在这里试验「比风还快的翅膀」。'},
   {id:'n_archive',n:'耐瑟档案馆',plane:'nether',x:15,y:12,g:'馆',desc:'浮空城的记忆宫殿。书架漂浮在半空，一个灵体在其中整理着永远读不完的卷轴。'},
   {id:'n_foundry',n:'密瑟能熔炉',plane:'nether',x:8,y:8,g:'炉',desc:'铸造神话的熔炉。冷却了千年，炉膛里仍有最后一点火光。'},
   {id:'n_spire',n:'浮空城之塔',plane:'nether',x:22,y:6,g:'塔',desc:'天空城最高的尖塔。塔顶的王座上，坐着一个不肯死去的名字。'},
@@ -1388,6 +1626,38 @@ const NPCS={
       opts.push({t:'告辞。',fn:null});
       return node('灵体的目光穿过你：「时间在这里是一页可以翻回的书。'+G.name+'，你要读哪一页？」',opts);
     }},
+  /* ---- 发明家 塞缪尔（飞艇码头·蒸汽朋克） ---- */
+  samuel:{name:'发明家 塞缪尔',loc:'airship',bio:'蒸汽与齿轮的信徒。他的假腿里藏着扳手，帽子里藏着另一顶帽子。',
+    root(){
+      const opts=[];
+      if(!f('samQ1')){
+        opts.push({t:'「这艘飞艇是你的杰作？」',fn:()=>{
+          Game.qst('sam1',1);setF('codex_steam');
+          return node('「杰作？不，它是『零件』。我的杰作需要三种东西：魔兽核心、符文碎片与黄铜。附近那些带阶位的魔物身上，什么材料都有——去凑三份核心与两份符文，外加150金币。我造一座移动灯塔给你。」',[{t:'「移动灯塔？」',fn:null}]);
+        }});
+      }else if(!(G.quests.sam1&&G.quests.sam1.done)){
+        const need=G.inv.filter(x=>x.id==='beast_core').reduce((a,x)=>a+x.qty,0);
+        const gly=G.inv.filter(x=>x.id==='glyph_shard').reduce((a,x)=>a+x.qty,0);
+        opts.push({t:'「材料进度（核心'+Math.min(need,3)+'/3，符文'+Math.min(gly,2)+'/2）」',fn:()=>{
+          if(need>=3&&gly>=2&&G.gold>=150){
+            removeItem('beast_core');removeItem('beast_core');removeItem('beast_core');
+            removeItem('glyph_shard');removeItem('glyph_shard');
+            gainGold(-150);
+            Game.qdone('sam1');gainXp(600);giveItem('dragonorb');
+            return node('齿轮轰鸣三日。他递给你一枚温热的球体：「龙息宝珠——改进型！姑娘（或小子），科学就是最强魔法。」',[{t:'（获得龙息宝珠）',fn:null}]);
+          }
+          return node('「材料不齐。魔物阶位越高，材料越肥——去猎吧。」',[{t:'继续收集。',fn:null}]);
+        }});
+      }else{
+        opts.push({t:'维修/改造（50金币，恢复全部生命）',fn:()=>{
+          if(G.gold<50){Game.log('金币不足。');return;}
+          gainGold(-50);G.hp=G.hpMax;Game.log('齿轮减压、蒸汽按摩——你焕然一新。','gain');
+        }});
+      }
+      opts.push({t:'枪械工坊（商店）',fn:()=>{Dlg.close();openShop('gear');}});
+      opts.push({t:'告辞。',fn:null});
+      return node('塞缪尔用望远镜打量你：「蒸气朋克、耐瑟遗物、还是古老魔法？在这个时代，三者本是一家。'+(G.name||'朋友')+'，要什么？」',opts);
+    }},
   /* ---- 深鳞商人 咕噜姆（幽暗地域入口） ---- */
   deep_merchant:{name:'深鳞商人 咕噜姆',loc:'underdark',bio:'盘踞幽暗入口的鳞裔商人。金币在黑暗中格外响亮——它听得到。',
     root(){
@@ -1442,6 +1712,7 @@ const QUESTS={
   drag1:{n:'龙墓三试（龙墓）',type:'支线',stages:['通过龙魂的三试：怒、焰、影','领取古龙鳞片与龙牙']},
   deep1:{n:'幽暗矿道（深鳞商人）',type:'支线',stages:['清剿幽暗矿道的暗幕怪']},
   arch1:{n:'耐瑟启蒙录（档案馆）',type:'支线',stages:['寻回三卷《耐瑟启蒙录》','向梅洛迪复命']},
+  sam1:{n:'移动灯塔（发明家塞缪尔）',type:'支线',stages:['收集魔兽核心×3、符文碎片×2与150金币','交予塞缪尔']},
   stones:{n:'石阵的坐标',type:'支线',stages:['在古老石阵解读位面坐标（智力DC14）']},
   orb:{n:'龙魂低语',type:'支线',stages:['探索龙裔废墟，寻得龙息宝珠']},
 };
@@ -1484,6 +1755,7 @@ const SHOPS={
   dock:{n:'东境港市集',list:['potion_heal','potion_fire','longsword','shortbow','studded','chainshirt']},
   under:{n:'鳞裔黑市',list:['potion_greater','potion_fire','dragonorb','greatsword','studded']},
   archive:{n:'耐瑟知识商店',list:['scroll_magic','nethertome']},
+  gear:{n:'塞缪尔枪械工坊',list:['steampistol','steamrifle','gadget_bomb','potion_heal']},
 };
 function openShop(shopId){
   const s=SHOPS[shopId];
@@ -1559,19 +1831,20 @@ const Combat={
     // 玩家单位
     this.units.push(this.makePlayerUnit());
     // 敌人
-    (cfg.monsters||[]).forEach(([id,cnt])=>{
+    (cfg.monsters||[]).forEach(([id,cnt,tier,vIdx])=>{
       for(let i=0;i<cnt;i++){
-        const m=MONSTERS[id];
-        if(!m)continue;
+        const tm=makeTierMonster(id,tier||0,vIdx);
+        if(!tm)continue;
         let x,y,tries=0;
         do{x=R.ri(this.arena.w-4,this.arena.w-1);y=R.ri(0,this.arena.h-1);tries++;}
         while(tries<30&&(this.arena.t[idx(x,y,this.arena.w)]===undefined||!TILE_PASS[this.arena.t[idx(x,y,this.arena.w)]]||this.units.some(u=>u.x===x&&u.y===y)));
-        this.units.push({uid:'e'+(++this.unitSeq),tid:id,name:m.n+(cnt>1?('·'+i+1):''),side:'e',m:m,hp:m.hp,hpMax:m.hp,ac:m.ac,speed:Math.round((m.spd||30)/5),x,y,cond:{},oaDone:false});
+        const suffix=cnt>1?('·'+(i+1)):'';
+        this.units.push({uid:'e'+(++this.unitSeq),tid:tm.tid,name:tm.name+suffix,side:'e',m:tm,hp:tm.hp,hpMax:tm.hpMax,ac:tm.ac,speed:Math.round(tm.spd/5),x,y,cond:{},oaDone:false,tier:tier||0,variant:tm.variant,xp:tm.xp});
       }
     });
     // 先攻
     this.units.forEach(u=>{
-      u.init=R.rollD20(u.player?mod('dex'):Math.floor(((u.m.spd||30)-10)/2),0).total;
+      u.init=R.rollD20(u.player?mod('dex')+(weaponInitB()):Math.floor(((u.m.spd||30)-10)/2),0).total;
     });
     this.order=[...this.units].sort((a,b)=>b.init-a.init).map(u=>u.uid);
     Game.log('—— 战斗开始 ——','combat');
@@ -1592,7 +1865,9 @@ const Combat={
     const wid=G.equip.weapon||'dagger';
     const w=ITEMS[wid];
     const ab=w.ranged?'dex':(w.fin?Math.max(mod('str'),mod('dex')):mod('str'));
-    list.push({id:wid,n:w.n,dmg:w.dmg,rng:w.rng||1,tb:prof()+ab,dmgMod:ab,ranged:!!w.ranged,magic:!!w.magic});
+    const wi0=weaponInst();
+    const mk=o=>{if(wi0){if(wi0.dmgMod)o.affDmg=(o.affDmg||0)+wi0.dmgMod;if(wi0.fire)o.affFire=true;if(wi0.poison)o.affPoison=true;if(wi0.thunder)o.affThunder=true;}return o;};
+    list.push(mk({id:wid,n:w.n,dmg:w.dmg,rng:w.rng||1,tb:prof()+ab,dmgMod:ab,ranged:!!w.ranged,magic:!!w.magic}));
     if(G.equip.weapon!=='dagger')list.push({id:'dagger',n:'匕首',dmg:'1d4',rng:1,tb:prof()+Math.max(mod('str'),mod('dex')),dmgMod:Math.max(mod('str'),mod('dex')),fin:1});
     // 龙息
     if(G.race==='dragonborn'&&!G.breathUsed)list.push({id:'breath',n:'龙息',special:'breath'});
@@ -1643,7 +1918,7 @@ const Combat={
     const u=this.unit(this.order[this.turn]);
     if(!u||u.dead){this.nextTurn();return;}
     u.oaDone=false;
-    if(u.side==='e'){this.enemyAct(u);return;}
+    if(u.side==='e'){this.intent(u);this.enemyAct(u);return;}
     // 玩家回合
     this.moved=false;this.acted=false;this.phase='move';this.reach=null;
     if(u.hp<=0){this.deathSave(u);return;}
@@ -1655,6 +1930,20 @@ const Combat={
     this.turn++;
     if(this.turn>=this.order.length){this.turn=0;this.round++;}
     this.beginTurn();
+  },
+  /* ---- 敌人意图预告 ---- */
+  intent(u){
+    const p=this.units.find(x=>x.uid==='p'&&!x.dead);
+    if(!p)return;
+    let target=p;
+    // 集火：玩家濒死时更激进；兽王分支降低野兽仇恨
+    if(p.hp/p.hpMax<0.35)target=p;
+    let how='逼近并攻击';
+    const atk=u.m.atk[0];
+    if(u.m.breath&&this.round%u.m.breath.cool===0)how='释放【'+(u.m.breath.name||'吐息')+'】';
+    else if(this.distance(u,p)<=(atk.rng||1))how='攻击'+(target.uid==='p'?'你':'友方');
+    Game.log('⚠ '+u.name+' 的意图：'+how,'combat');
+    return target;
   },
   /* ---- 敌人AI ---- */
   enemyAct(u){
@@ -1790,11 +2079,19 @@ const Combat={
     if(r.total<def.ac&&!r.crit){Game.log('—— 未命中。','combat');SFX.play('click');return;}
     // 伤害
     let dmg=R.roll(wpn.dmg);
-    if(att.player)dmg+=(wpn.dmgMod||0);
+    if(att.player)dmg+=(wpn.dmgMod||0)+(att.rageDmg||0);
     if(r.crit){dmg+=R.roll(wpn.dmg);Game.log('会心一击！伤害骰翻倍！','combat');SFX.play('crit');}
     // 玩家附加
     if(att.player){
       if(def.cond.marked)dmg+=R.roll('1d6');
+      if(G.rageActive&&G.subcls==='berserker')dmg+=2;
+      if(G.subcls==='warpriest'&&wpn.rng===1)dmg+=1;
+      if(G.subcls==='stalker'&&def.cond.marked)dmg+=R.roll('1d4');
+      if(G.subcls==='draconic'&&wpn.type==='火焰')dmg+=R.roll('1d4');
+      if(G.subcls==='oathdev'&&wpn.id==='smite')dmg+=R.roll('1d8');
+      if(G.subcls==='oathven'&&def.tier>=2)dmg+=2;
+      if(G.subcls==='gunsmith'&&(wpn.id==='steamrifle'||wpn.id==='steampistol'))dmg+=1;
+      if(G.subcls==='assassin'&&Combat.round===1)dmg+=R.roll(wpn.dmg);
       if(G.cls==='rogue'&&adv>0){
         const sd=Math.floor((G.level+1)/2);
         dmg+=R.roll(sd+'d6');
@@ -1802,12 +2099,17 @@ const Combat={
       }
       if(wpn.id==='starblade')dmg+=R.roll('1d4');
       if(wpn.id==='dragonfang')dmg+=R.roll('1d4');
+      if(wpn.affDmg)dmg+=wpn.affDmg;
+      if(wpn.affFire){const ex=R.roll('1d4');dmg+=ex;Game.log('灼热之力附加 '+ex+' 点火焰伤害。','combat');}
+      if(wpn.affPoison){const ex=R.roll('1d4');dmg+=ex;Game.log('淬毒之刃附加 '+ex+' 点毒素伤害。','combat');}
+      if(wpn.affThunder){const ex=R.roll('1d4');dmg+=ex;Game.log('雷鸣迸发附加 '+ex+' 点闪电伤害。','combat');}
     }
     this.applyDamage(def,dmg,wpn.type||'挥砍',att);
   },
   applyDamage(def,dmg,type,src){
     if(def.hp<=0)return;
     if(def.player&&type==='火焰'&&(G.race==='tiefling'||G.flags.fireRes===G.day))dmg=Math.floor(dmg/2);
+    if(def.player&&def.rageTough&&(type==='挥砍'||type==='穿刺'||type==='钝击'))dmg=Math.max(0,dmg-1);
     def.hp-=dmg;
     SFX.play('hit');
     Game.log((def.player?'你':def.name)+'受到 '+dmg+' 点'+(type||'')+'伤害（HP '+Math.max(0,def.hp)+'/'+def.hpMax+'）','combat');
@@ -1821,6 +2123,8 @@ const Combat={
         if(def.m.tag==='undead')G.flags.undeadKills=(G.flags.undeadKills||0)+1;
         if(def.tid==='yeti')setF('yetiDead');
         G.kills++;
+        bestiaryMark(def);
+        if(!def.player)rollLoot(def.tier||0,def.m).forEach(l=>{if(l[2])giveInst(l[0],1,l[2]);else giveItem(l[0],l[1]);});
         if(G.bounty&&!G.bounty.claimed&&def.tid===G.bounty.monster){
           G.bounty.done=Math.min(G.bounty.need,G.bounty.done+1);
           Game.log('赏金进度：'+G.bounty.done+'/'+G.bounty.need+'（'+G.bounty.name+'）','quest');
@@ -1846,10 +2150,12 @@ const Combat={
     if(scene)scene.exitCombat();
     if(victory){
       let xp=0,gold=0;
+      const lootB=hasLootBonus();
       this.units.filter(u=>u.side==='e').forEach(u=>{
-        xp+=MON_XP[u.m.cr]||50;
+        xp+=u.xp||(MON_XP[u.m.cr]||50);
         const [a,b]=u.m.loot||[0,0];gold+=R.ri(a,b);
       });
+      if(lootB)gold=Math.round(gold*1.2);
       Game.log('—— 战斗胜利！——','combat');
       gainGold(gold);
       if(gold>0)Game.log('搜刮战利品，得到 '+gold+' 金币。','gain');
@@ -2109,6 +2415,21 @@ const Combat={
     this.phase='move';this.curSel=null;
     if(!this.checkEnd())this.endPlayerTurn();
   },
+  rageToggle(){
+    if(!G.rageActive){
+      if(G.flags.rageUsed>=G.day&&G.flags.rageCount>=2){Game.log('今日狂暴次数用尽。','combat');return;}
+      G.rageActive=true;G.flags.rageCount=(G.flags.rageCount||0)+1;G.flags.rageUsed=G.day;
+      const u=this.unit('p');
+      u.rageDmg=2+((G.subcls==='berserker')?2:0);u.rageTough=1;u.rageAc=(G.subcls==='totem')?1:0;
+      Game.log('你发出震天战吼——狂暴！','combat');SFX.play('spell');
+    }else{
+      G.rageActive=false;const u=this.unit('p');
+      u.rageDmg=0;u.rageTough=0;u.rageAc=0;
+      if(u.cond&&u.cond.shield)delete u.cond.shield;
+      Game.log('怒意退去。','combat');
+    }
+    this.showBar();
+  },
   breathAttack(){
     const u=this.unit('p');
     if(G.breathUsed){Game.log('龙息尚未恢复（短休恢复）。','combat');return;}
@@ -2169,6 +2490,7 @@ const Combat={
       }
       if(G.cls==='paladin')html+='<button class="btn btn-blue" onclick="Combat.smite()">神圣斩击</button>';
       if(G.cls==='fighter')html+='<button class="btn btn-green" onclick="Combat.secondWind()">回气</button>';
+      if(G.cls==='barbarian')html+='<button class="btn btn-red" onclick="Combat.rageToggle()">狂暴'+(G.rageActive?'(中)':'')+'</button>';
       if(G.cls==='cleric')html+='<button class="btn btn-green" onclick="Combat.healLay()">圣疗('+G.healPool+')</button>';
       // 药水
       G.inv.forEach((it,i)=>{
@@ -2229,20 +2551,57 @@ function revealFog(){
 function rollWeather(){
   const roll=Math.random();
   if(G.plane==='material'){
-    G.weather=roll<.55?'clear':roll<.75?'rain':roll<.9?'fog':'storm';
-  }else if(G.plane==='astral')G.weather='clear';
+    const reg=regionAt(G.x,G.y);
+    if(reg.id==='frost'||reg.id==='crater'){
+      G.weather=roll<.35?'snow':roll<.6?'clear':roll<.8?'fog':'storm';
+    }else if(reg.id==='ashen'){
+      G.weather=roll<.4?'sandstorm':roll<.7?'clear':roll<.9?'fog':'storm';
+    }else if(roll<.06&&isDaytime()===false){
+      G.weather='starfall';
+    }else{
+      G.weather=roll<.55?'clear':roll<.75?'rain':roll<.9?'fog':'storm';
+    }
+  }else if(G.plane==='astral')G.weather=R.chance(.2)?'starfall':'clear';
   else if(G.plane==='elemental')G.weather=roll<.5?'clear':'storm';
   else if(G.plane==='shadow')G.weather='fog';
   else G.weather='clear';
 }
+const WEATHER_N={clear:'晴',rain:'雨',fog:'雾',storm:'暴风雨',snow:'雪',sandstorm:'沙暴',starfall:'星陨微光'};
+function weatherN(){return WEATHER_N[G.weather]||G.weather;}
 function timeTick(){
   G.time+=10;
   if(G.time>=1440){G.time-=1440;G.day++;G.days++;rollWeather();
-    Game.log('—— 第 '+G.day+' 天 · 天气：'+({clear:'晴',rain:'雨',fog:'雾',storm:'暴风雨'}[G.weather])+' ——','sys');
+    Game.log('—— 第 '+G.day+' 天 · 天气：'+weatherN()+' ——','sys');
     if(f('invested')){gainGold(50);Game.log('商盟分红 +50 金币。','gain');}
     G.flags.orbUsedDay=0;
+    G.flags.rageUsed=0;G.flags.rageCount=0;
+    WorldEnv.dayTick();
   }
 }
+/* ---- 世界自主衍化 ---- */
+const WorldEnv={
+  mod:{enc:1,price:1},
+  events:[
+    {d:2,t:()=>{G.flags.day2=true;Game.log('【世界·第2天】灰烬要塞的远征队开赴霜脊，雪原的兽人迁移了。','sys');}},
+    {d:3,t:()=>{Game.log('【世界·第3天】东境渔汛暴减——港口开始高价收购深渊夜明珠。','sys');}},
+    {d:5,t:()=>{WorldEnv.mod.undead=3;Game.log('【世界·第5天】星陨裂口涌出幽绿浓雾，亡灵成群出没！','sys');}},
+    {d:8,t:()=>{WorldEnv.mod.enc=.7;Game.log('【世界·第8天】商盟武装商队开道，商路往来愈发安全。','sys');}},
+    {d:12,t:()=>{Game.log('【世界·第12天】耐瑟天空城的轮廓在云后愈发清晰，各地占星师陷入狂喜。','sys');}},
+    {d:16,t:()=>{WorldEnv.mod.price=1.2;Game.log('【世界·第16天】战备令下，全境物价上涨两成。','sys');}},
+    {d:21,t:()=>{WorldEnv.mod.enc=1.1;Game.log('【世界·第21天】位面裂隙扩大，异界生物渗入荒野。','sys');}},
+    {d:30,t:()=>{Game.log('【世界·第30天】新月镇立起了第一座星陨纪念碑。','sys');}},
+  ],
+  dayTick(){
+    const ev=WorldEnv.events.find(e=>e.d===G.day);
+    if(ev&&!f('wev'+ev.d)){setF('wev'+ev.d);ev.t();}
+    // 阵营动态：每日随机小漂移
+    const k=R.pick(['church','ash','shadow','trade']);
+    const dr=R.ri(-2,2);
+    if(dr!==0&&G.fav[k]+dr>=0){G.fav[k]=Math.max(0,Math.min(100,G.fav[k]+dr));}
+    // 周期性广播
+    if(G.day%7===0)Game.log('【世界】星陨裂口又扩大了一分。守门人的长明灯火在风中发抖……','sys');
+  }
+};
 function tryMove(dx,dy){
   if(Game.busy())return;
   const m=getMap(G.plane);
@@ -2309,14 +2668,28 @@ function rollEncounter(){
   let base=G.plane==='material'?0.09:0.13;
   if(reg.id==='road')base=0.05;
   if(G.cls==='ranger')base*=0.7;
+  if(G.subcls==='scout')base*=0.8;
   if(!isDaytime())base*=1.8;
   if(G.weather==='fog')base*=1.3;
+  if(G.weather==='snow')base*=1.2;
+  if(G.weather==='sandstorm')base*=1.4;
   if(G.weather==='rain')base*=0.8;
+  if(WorldEnv.mod.undead&&reg.id==='marsh')base*=WorldEnv.mod.undead;
+  base*=WorldEnv.mod.enc||1;
   if(!R.chance(base))return false;
   const table=G.plane==='material'?reg.enc:PLANE_ENC[G.plane];
   if(!table)return false;
   const pick=R.pick(table);
   const cnt=R.ri(pick[1],pick[2]);
+  // 阶位随等级与时间成长；随机元素变体
+  let tier=0;
+  const tierChance=Math.min(.55,.1+ (G.level-1)*.06 + G.day*.01);
+  if(R.chance(tierChance))tier=1;
+  if(tier&&R.chance(.3+ (G.level-1)*.04))tier=2;
+  if(R.chance(.02+G.day*.001))tier=3;
+  let vIdx;
+  const vChance=Math.min(.5,.05+tier*.15+(G.day*.005));
+  if(R.chance(vChance))vIdx=R.ri(0,VARIANTS.length-1);
   const names={goblin:'哥布林',wolf:'狼群',bandit:'土匪',skeleton:'骷髅',specter:'幽灵',ghoul:'食尸鬼',zombie:'僵尸群',shadow:'暗影',imp:'小恶魔',orog:'兽人战团',fire_elemental:'火元素',winterwolf:'冬狼',yeti:'雪怪',astral_raider:'星界掠夺者',fey_knight:'妖精骑士',spider:'蛛群',ice_elemental:'冰元素',wraith:'幽魂'};
   const intros={
     material:'「有什么东西在'+reg.n+'的'+(isDaytime()?'日光':'阴影')+'中移动——是'+(names[pick[0]]||pick[0])+'！」',
@@ -2325,7 +2698,7 @@ function rollEncounter(){
     shadow:'死者的低语骤然清晰！',
     fey:'宴席的乐曲变调成了狩猎的号角！',
   };
-  Combat.start({monsters:[[pick[0],cnt]],intro:intros[G.plane]||intros.material,theme:reg.id});
+  Combat.start({monsters:[[pick[0],cnt,tier,vIdx]],intro:intros[G.plane]||intros.material,theme:reg.id});
   G.encounterCd=6;
   return true;
 }
@@ -2431,6 +2804,17 @@ function showLocMenu(loc){
     else acts.push({t:'检查祭坛（需要4枚碎片）',fn:()=>{closeModal();Game.log('四道凹槽中只有 '+G.shards+' 枚碎片在发光。门扉沉默不语。');}});
   }
   /* ---- 扩展地点行为 ---- */
+  if(loc.id==='airship'){
+    if(!f('enforcerDead')){
+      acts.push({t:'击退失控的齿轮执法者（精英首领战）',fn:()=>{
+        closeModal();
+        Combat.start({monsters:[['enforcer',1,2,7]],intro:'码头仓库里，一台失控的执法者撕开铁门——蒸汽管线如血管般亮起！',
+          onWin:()=>{setF('enforcerDead');gainXp(900);gainGold(200);Game.log('执法者化为废铁，塞缪尔激动地拆走了它的齿轮心脏。','gain');}});
+      }});
+    }else{
+      acts.push({t:'瞭望星空（解锁典籍）',fn:()=>{closeModal();setF('codex_airship');Game.log('从码头望去，天空城的轮廓悬在星野之间，像一枚等待发条的天体。','gain');}});
+    }
+  }
   if(loc.id==='eastport'){
     if(!f('eastCleared'))acts.push({t:'清剿黑旗海盗（战斗）',fn:()=>{
       closeModal();
@@ -2760,6 +3144,9 @@ class WorldScene extends Phaser.Scene{
     if(G.weather==='rain'){alpha=Math.min(.5,alpha+.15);color=0x1a2a4a;}
     if(G.weather==='storm'){alpha=Math.min(.55,alpha+.22);color=0x1a1a3a;}
     if(G.weather==='fog'&&G.plane==='material'){alpha=Math.min(.5,alpha+.12);color=0x8a8a7a;}
+    if(G.weather==='snow'){alpha=Math.min(.5,alpha+.2);color=0x8a9ab8;}
+    if(G.weather==='sandstorm'){alpha=Math.min(.5,alpha+.2);color=0x8a6a3a;}
+    if(G.weather==='starfall'){alpha=Math.min(.35,alpha+.1);color=0x2a1a4a;}
     if(alpha>0){g.fillStyle(color,alpha);g.fillRect(0,0,W,H);}
   }
   /* ---- 战斗渲染 ---- */
@@ -2807,6 +3194,7 @@ class WorldScene extends Phaser.Scene{
       const isP=t.side==='p';
       ug.fillStyle(isP?0x3f6d33:0x8a2f1d,1);
       ug.fillCircle(px,py,8);
+      if(!isP&&t.tier>0){ug.lineStyle(3,Phaser.Display.Color.HexStringToColor(tierSpec(t.tier).color).color,1);ug.strokeCircle(px,py,10);}
       ug.lineStyle(2,0xf0e2bd,1);
       ug.strokeCircle(px,py,8);
       ug.fillStyle(0x000000,.5);
@@ -2853,7 +3241,7 @@ function renderTopbar(){
   const hour=Math.floor(G.time/60);
   const seg=hour<5?'深夜':hour<8?'清晨':hour<12?'上午':hour<17?'午后':hour<20?'黄昏':'夜晚';
   $('tbTime').textContent='第'+G.day+'天 · '+seg;
-  $('tbWeather').textContent={clear:'晴',rain:'雨',fog:'雾',storm:'暴风雨'}[G.weather]||G.weather;
+  $('tbWeather').textContent=weatherN();
   $('tbHP').style.width=Math.max(0,G.hp/G.hpMax*100)+'%';
   $('tbHPn').textContent=G.hp+'/'+G.hpMax;
   $('tbAC').textContent=computeAC();
@@ -2881,13 +3269,32 @@ function renderStory(){
   else if(curTab==='spell')renderSpells(box);
   else if(curTab==='quest')renderQuests(box);
   else if(curTab==='codex')renderCodex(box);
+  else if(curTab==='best')renderBestiary(box);
   else if(curTab==='sys')renderSys(box);
 }
 window.setLogFilter=function(k){logFilter=k;SFX.play('click');switchTab('story');};
+function renderBestiary(box){
+  if(!G.bestiary)G.bestiary={};
+  const seen=Object.keys(G.bestiary);
+  let html='<div class="text-xs text-parch-700 mb-2">魔物图鉴：击杀解锁。阶位：<span class="text-parch-800">普通→精英→首领→领主→霸主</span>；变体携带元素/属性变异。</div>';
+  const list=[...Object.keys(MONSTERS)].filter(id=>G.bestiary[id]&&G.bestiary[id].kills>0);
+  if(!list.length){html+='<div class="text-sm text-parch-600">（尚未斩杀任何魔物——向荒原出发吧）</div>';box.innerHTML=html;return;}
+  let html2='<div class="space-y-1">';
+  list.forEach(id=>{
+    const m=MONSTERS[id],b=G.bestiary[id];
+    const tN=TIERS['t'+(b.tier||0)].n;
+    html2+='<div class="card"><b>'+esc(m.n)+'</b> <span class="text-xs text-parch-600">击杀 '+b.kills+' · 最高阶位 '+tN+'</span>'+
+      '<div class="text-xs text-parch-700 mt-0.5">CR '+m.cr+' · AC '+m.ac+' · 生命 '+m.hp+' · 速度 '+m.spd+'尺</div>'+
+      '<div class="text-xs text-parch-700">'+m.atk.map(a=>a.name+'('+a.dmg+(a.type?' '+a.type:'')+')').join('、')+'</div></div>';
+  });
+  html+=html2+'</div>';
+  html+='<div class="text-xs text-parch-600 mt-2">奥秘：更高阶位的敌人会随机携带元素变体，并掉落材料与魔法装备。</div>';
+  box.innerHTML=html;
+}
 function renderChar(box){
   const c=CLASSES[G.cls],rc=RACES[G.race],bg=BGS[G.bg];
   const favn=[['church','星辉教会','#8a7030'],['ash','灰烬兄弟会','#8a4030'],['shadow','幽影议会','#4a3a5a'],['trade','自由商盟','#3f6d33']];
-  let html='<div class="card mb-2"><div class="flex justify-between items-baseline"><b class="text-lg text-ink">'+esc(G.name)+'</b><span class="text-xs text-parch-600">'+rc.n+' · '+c.n+' · '+bg.n+'</span></div>'+
+  let html='<div class="card mb-2"><div class="flex justify-between items-baseline"><b class="text-lg text-ink">'+esc(G.name)+'</b><span class="text-xs text-parch-600">'+rc.n+' · '+c.n+' · '+bg.n+'</span></div>'+(G.subcls?'<div class="text-xs text-arc mt-0.5">分支：'+esc(SUBCLASS[G.cls].list[G.subcls].n)+'</div>':'')+
     '<div class="text-xs text-parch-700 mt-1">'+rc.trait+'</div>'+
     '<div class="text-xs text-parch-700">职业特性：'+c.feat+'</div></div>';
   html+='<div class="grid grid-cols-3 gap-1 mb-2">';
@@ -2930,19 +3337,23 @@ function renderInv(box){
   html+='<div class="grid grid-cols-2 gap-1 mb-2">';
   slots.forEach(([k,n])=>{
     const id=G.equip[k];
-    html+='<div class="card text-xs"><div class="text-parch-600">'+n+'</div><b>'+(id?esc(ITEMS[id].n):'（空）')+'</b></div>';
+    const inst=G.equip[k+'Inst']||null;
+    html+='<div class="card text-xs"><div class="text-parch-600">'+n+'</div><b>'+(id?esc(itemDisplayName({id:id,inst:inst})):'（空）')+'</b></div>';
   });
   html+='</div><div class="space-y-1">';
   if(!G.inv.length)html+='<div class="text-sm text-parch-600">（背包空空如也）</div>';
   G.inv.forEach((it,i)=>{
-    const item=ITEMS[it.id];
+    const item=ITEMS[it.id]||MATS[it.id];
+    if(!item)return;
     const canEquip=item.type==='weapon'||item.type==='armor'||item.type==='shield';
+    const btxt=itemBonusText(it);
     html+='<div class="card flex items-center gap-2 text-xs">'+
-      '<div class="flex-1"><b>'+esc(item.n)+'</b>×'+it.qty+' <span class="text-parch-600">'+(item.desc||'')+(item.dmg?' 伤害'+item.dmg:'')+'</span></div>';
+      '<div class="flex-1"><b>'+esc(itemDisplayName(it))+'</b>×'+it.qty+' <span class="text-parch-600">'+(btxt?btxt+' · ':'')+(item.desc||'')+(item.dmg?' 伤害'+item.dmg:'')+'</span></div>';
+    html+='<button class="btn" onclick="itemDetail('+i+')">详情</button>';
     if(canEquip)html+='<button class="btn" onclick="equipItem('+i+')">装备</button>';
     if(item.type==='potion')html+='<button class="btn btn-green" onclick="usePotion('+i+')">饮用</button>';
     if(item.type==='trinket'&&it.id==='dragonorb')html+='<button class="btn" onclick="toast(\'在战斗中使用\')">战斗用</button>';
-    if(item.type!=='quest'&&it.id!=='shard')html+='<button class="btn btn-red" onclick="sellItem('+i+')">卖'+Math.floor((item.price||0)/2)+'金</button>';
+    if(item.type!=='quest'&&it.id!=='shard')html+='<button class="btn btn-red" onclick="sellItem('+i+')">卖'+Math.floor(itemPrice(it)/2)+'金</button>';
     html+='</div>';
   });
   html+='</div>';
@@ -2953,11 +3364,14 @@ window.equipItem=function(i){
   const item=ITEMS[it.id];
   const slot=item.type==='weapon'?'weapon':item.type==='armor'?'armor':item.type==='shield'?'shield':'trinket';
   const old=G.equip[slot];
+  const oldInst=G.equip[slot+'Inst']||null;
   removeItem(it.id,1);
-  if(old)giveItem(old,1);
+  if(old){
+    if(oldInst)giveInst(old,1,oldInst);else giveItem(old,1);
+  }
   G.equip[slot]=it.id;
-  if(slot==='weapon')Game.log('装备了【'+item.n+'】。','sys');
-  else Game.log('装备了【'+item.n+'】（AC调整）。','sys');
+  G.equip[slot+'Inst']=it.inst?Object.assign({},it.inst):null;
+  Game.log('装备了【'+itemDisplayName({id:it.id,inst:it.inst})+'】。','sys');
   renderTopbar();renderStory();
 };
 window.usePotion=function(i){
@@ -2977,12 +3391,26 @@ window.usePotion=function(i){
 };
 window.sellItem=function(i){
   const it=G.inv[i];if(!it)return;
-  const item=ITEMS[it.id];
-  const price=Math.floor((item.price||0)/2);
+  if(!(ITEMS[it.id]||MATS[it.id]))return;
+  const price=Math.floor(itemPrice(it)/2);
   if(price<=0){toast('这个卖不出价');return;}
   removeItem(it.id,1);
   gainGold(price);
   renderStory();
+};
+window.itemDetail=function(i){
+  const it=G.inv[i];if(!it)return;
+  const item=ITEMS[it.id]||MATS[it.id];if(!item)return;
+  const btxt=itemBonusText(it);
+  let html='<h3 class="text-lg font-bold text-ink mb-1">'+esc(itemDisplayName(it))+'</h3>';
+  const slotName={weapon:'武器',armor:'护甲',shield:'盾牌',trinket:'饰品',potion:'药水',mat:'材料',quest:'任务物品',scroll:'消耗品'};
+  html+='<div class="text-xs text-parch-700 mb-2">类型：'+(slotName[item.type]||item.type)+' · 估值：'+itemPrice(it)+'金 · 品质：'+((it.inst&&it.inst.q)?QUALITY[it.inst.q]:'普通')+'</div>';
+  html+='<div class="text-sm leading-relaxed text-parch-800">'+(item.desc||'')+'</div>';
+  if(item.dmg)html+='<div class="text-sm">伤害：<b>'+item.dmg+'</b></div>';
+  if(item.ac)html+='<div class="text-sm">基础AC：<b>'+item.ac+'</b>'+(item.dexcap<10?'（敏捷上限+'+item.dexcap+'）':'')+'</div>';
+  if(btxt)html+='<div class="text-sm text-arc">词缀【'+esc(it.inst?it.inst.sfx:'')+'】：'+esc(btxt)+'</div>';
+  html+='<div class="text-right mt-3"><button class="btn" onclick="closeModal()">关闭</button></div>';
+  openModal(html);
 };
 function renderSpells(box){
   if(!CLASSES[G.cls].casting){
@@ -3098,6 +3526,8 @@ const CODEX=[
  {id:'ash',cat:'势力',n:'灰烬兄弟会',hint:'灰烬好感达到30',txt:'兄弟会的第一条会规刻在熔炉上：「烧掉没用的过去，包括这句。」他们收集坠星残骸，不是因为信仰，而是因为那玩意儿最好用来打铁。'},
  {id:'shadow',cat:'势力',n:'幽影议会',hint:'幽影好感达到30',txt:'议会不投票，只「数影子」。影主的裁决从不说出口——她的影子会先点头。想加入的人必须献上一段真实的记忆；很多年过去了，没人知道这些记忆被用在了哪里。'},
  {id:'trade',cat:'势力',n:'自由商盟',hint:'商盟好感达到30',txt:'商盟的《行商宪章》只有一条正文：「所有东西都有价格，包括这条。」每年星陨纪念日，商盟会拍卖「明年最先过河的权利」——已经拍出了一百年后。'},
+ {id:'steam',cat:'蒸汽纪元',n:'齿轮与蒸汽',hint:"结识飞艇码头的发明家塞缪尔",txt:'星陨之前，艾瑟洛斯的学者们已经让黄铜转动起来：蒸汽步枪、飞艇、锅炉引擎。星陨之夜坠落的碎片让齿轮跑得更快。如今，蒸汽与魔法在同一根发条上较劲——码头上的工匠们管这叫「第二次启蒙」。'},
+ {id:'airship',cat:'蒸汽纪元',n:'飞艇码头与天路',hint:'登上飞艇码头瞭望台',txt:'飞艇码头曾经是「天路」计划的总站——一条从东境港直通天空城的空中商道。星陨撕裂了航线，码头荒废了三年。塞缪尔们相信，只要再打捞上三颗发条核心，天路就能重开。'},
  {id:'dragons',cat:'传奇',n:'龙族七戒',hint:'通过龙墓三试',txt:'龙族有七条戒律：不食泣者、不焚耕者、不欺幼者、不背誓约、不眠于他人之碑、不弃同族之卵、不唤星陨之名。人们记住七戒，是因为每条戒律背后都有一段用鳞片偿还的故事。'},
  {id:'relics',cat:'神器',n:'神器录',hint:'集齐任意两件传奇装备',txt:'星辉长剑、龙牙长枪、龙鳞甲、密瑟能核、灵感徽章……记录者们坚持认为，神器不选主人，只选「恰好走到故事转折处的人」。'},
 ];
