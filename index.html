@@ -51,6 +51,9 @@ tailwind.config = {
   ::-webkit-scrollbar-thumb{background:#7a5c33;border-radius:5px;}
   .tabbtn{flex:1; text-align:center; padding:6px 2px; font-size:13px; cursor:pointer; border-bottom:3px solid transparent; color:#5d452a;}
   .tabbtn.on{border-bottom-color:#8a2f1d; color:#8a2f1d; font-weight:bold; background:rgba(255,250,235,.5);}
+  .chip{border:1px solid #7a5c33; background:rgba(255,250,235,.4); color:#5d452a; font-size:11px; padding:2px 8px; border-radius:10px; cursor:pointer; transition:all .12s;}
+  .chip:hover{background:rgba(255,250,235,.75);}
+  .chip.on{background:#5d452a; color:#f0e2bd; border-color:#3e2e1c; font-weight:bold;}
   .hpbar{height:10px; background:#5a2a1a; border-radius:4px; overflow:hidden; border:1px solid #3a2b16;}
   .hpbar>div{height:100%; background:linear-gradient(90deg,#7fae54,#4c7a2e);}
   .rollpop{animation:rollshake .5s;}
@@ -97,6 +100,7 @@ tailwind.config = {
         <div class="tabbtn" data-tab="inv">背包</div>
         <div class="tabbtn" data-tab="spell">法术书</div>
         <div class="tabbtn" data-tab="quest">任务</div>
+        <div class="tabbtn" data-tab="codex">典籍</div>
         <div class="tabbtn" data-tab="sys">系统</div>
       </nav>
       <div id="tabContent" class="flex-1 overflow-y-auto p-3"></div>
@@ -315,7 +319,7 @@ const CLASSES={
     prio:['int','dex','con','wis','cha','str'],casting:'int',
     gear:[['quarterstaff',1],['potion_heal',1]],
     feat:'奥术掌控：法术豁免DC=8+熟练+智力调整',color:'#4a3a8a',
-    spells:['firebolt','rayfrost','magicmissile','shield','invisibility','scorchingray','fireball','lightningbolt','icestorm','coneofcold']},
+    spells:['firebolt','rayfrost','magicmissile','shield','invisibility','scorchingray','warpbolt','fireball','lightningbolt','icestorm','coneofcold']},
   rogue:{n:'游荡者',hd:8,saves:['dex','int'],pool:['巧手','隐匿','察觉','欺瞒','洞悉','杂技'],nskill:3,
     prio:['dex','int','con','cha','wis','str'],casting:null,
     gear:[['shortsword',1],['shortbow',1],['leather',1],['dagger',2]],
@@ -358,6 +362,7 @@ const SPELLS={
   icestorm:{n:'冰风暴',lvl:4,dmg:'2d10+4d6',type:'冰霜',rng:12,save:'dex',half:1,area:1,cls:['wizard']},
   flamestrike:{n:'焰击术',lvl:5,dmg:'8d6',type:'火焰',rng:12,save:'dex',half:1,area:1,cls:['cleric']},
   coneofcold:{n:'寒冰锥',lvl:5,dmg:'8d8',type:'冷冻',rng:1,save:'con',half:1,cone:1,cls:['wizard']},
+  warpbolt:{n:'相位弹',lvl:2,dmg:'2d10',type:'力场',rng:12,atk:1,cls:['wizard']},
 };
 const SLOT_FULL={1:[2],2:[3],3:[4,2],4:[4,3],5:[4,3,2],6:[4,3,3],7:[4,3,3,1],8:[4,3,3,2],9:[4,3,3,3,1],10:[4,3,3,3,2]};
 const SLOT_HALF={1:[],2:[2],3:[3],4:[3],5:[4,2],6:[4,2],7:[4,3],8:[4,3],9:[4,3,1],10:[4,3,2]};
@@ -393,6 +398,13 @@ const ITEMS={
   luckcharm:{n:'灵感徽章',type:'trinket',price:0,desc:'所有检定+1（被动）'},
   shadowkey:{n:'影匣钥匙',type:'quest',price:0,desc:'幽影议会信物'},
   starcrown:{n:'星辰之冠',type:'quest',price:0,desc:'星灵加冕的信物，价值连城'},
+  dscale:{n:'古龙鳞片',type:'quest',price:100,desc:'铸造龙鳞甲的核心材料'},
+  dfang:{n:'龙牙',type:'quest',price:90,desc:'铸造龙牙长枪的核心材料'},
+  deeppearl:{n:'深渊夜明珠',type:'quest',price:150,desc:'可在东境港卖出高价'},
+  scalearmor:{n:'龙鳞甲',type:'armor',ac:15,dexcap:2,price:430,desc:'古龙鳞片锻成的护甲'},
+  dragonfang:{n:'龙牙长枪',type:'weapon',dmg:'1d10+1',rng:1,price:390,magic:1,desc:'附魔武器，命中时附加+1d4闪电'},
+  mythallar:{n:'密瑟能核残片',type:'trinket',price:0,desc:'耐瑟浮空城之心。全检定+1，解锁新的终局之路'},
+  nethertome:{n:'耐瑟启智法典',type:'trinket',price:0,desc:'研读后法术攻击+1（被动）'},
 };
 
 /* 怪物（SRD 数值） spd单位英尺 */
@@ -423,6 +435,16 @@ const MONSTERS={
   star_golem:{n:'星陨魔像',cr:7,ac:17,hp:114,spd:25,two:1,boss:1,atk:[{name:'星核重拳',tb:8,dmg:'2d8+4',type:'钝击'}],breath:{dc:15,abil:'dex',dmg:'6d6',type:'光耀',half:1,name:'星尘爆',cool:3},loot:[150,400]},
   rift_devourer:{n:'裂隙吞噬者',cr:9,ac:16,hp:152,spd:30,two:1,boss:1,atk:[{name:'虚空之触',tb:8,dmg:'3d6+5',type:'力场'}],breath:{dc:16,abil:'dex',dmg:'10d6',type:'力场',half:1,name:'位面湮灭波',cool:3},loot:[300,800]},
   fallen_star:{n:'堕落星灵',cr:12,ac:18,hp:190,spd:30,two:1,boss:1,atk:[{name:'星辰之杖',tb:9,dmg:'3d6+5',type:'光耀'}],breath:{dc:17,abil:'dex',dmg:'10d10',type:'光耀',half:1,name:'超新星',cool:3},loot:[0,0]},
+  /* ---- 扩展怪物（SRD 同源数值） ---- */
+  thug:{n:'码头打手',cr:0.5,ac:11,hp:32,spd:30,two:1,atk:[{name:'钉头锤',tb:4,dmg:'1d6+2',type:'钝击'}],loot:[5,25]},
+  cultist:{n:'星辉叛教徒',cr:0.125,ac:12,hp:9,spd:30,atk:[{name:'弯匕',tb:3,dmg:'1d4+1',type:'穿刺'}],loot:[1,10]},
+  pirate:{n:'海盗掠夺者',cr:0.5,ac:13,hp:18,spd:30,atk:[{name:'弯刀',tb:3,dmg:'1d6+1',type:'挥砍'},{name:'船舷弩',tb:3,dmg:'1d8+1',type:'穿刺',rng:5}],loot:[10,45]},
+  darkmantle:{n:'暗幕怪',cr:0.5,ac:11,hp:22,spd:10,fly:1,atk:[{name:'暗噬',tb:5,dmg:'1d6+3',type:'穿刺'}],loot:[0,8]},
+  netherese_guard:{n:'耐瑟魔像侍卫',cr:2,ac:16,hp:55,spd:25,atk:[{name:'符文之拳',tb:6,dmg:'1d8+4',type:'钝击'}],loot:[30,120]},
+  arcanist:{n:'耐瑟奥术师',cr:4,ac:13,hp:48,spd:30,atk:[{name:'相位弹幕',tb:6,dmg:'2d8+2',type:'力场',rng:6}],breath:{dc:14,abil:'dex',dmg:'5d8',type:'力场',half:1,name:'溃解射线',cool:3},loot:[50,180]},
+  deep_terror:{n:'深渊触须兽',cr:6,ac:14,hp:98,spd:30,two:1,atk:[{name:'触须绞杀',tb:7,dmg:'2d6+4',type:'钝击'}],loot:[80,220]},
+  dragon_shade:{n:'古龙之影',cr:8,ac:18,hp:125,spd:40,fly:1,two:1,boss:1,atk:[{name:'幽影龙爪',tb:8,dmg:'2d8+5',type:'挥砍'},{name:'残响龙尾',tb:8,dmg:'2d6+5',type:'钝击'}],breath:{dc:15,abil:'con',dmg:'6d8',type:'黯蚀',half:1,name:'龙息残响',cool:3},loot:[200,500]},
+  lich_lord:{n:'浮空城主宰',cr:10,ac:17,hp:135,spd:30,fly:1,two:1,boss:1,atk:[{name:'噬魂之触',tb:8,dmg:'2d8+5',type:'黯蚀'},{name:'奥术暴雨',tb:8,dmg:'2d6+2',type:'力场',rng:6}],breath:{dc:16,abil:'dex',dmg:'8d8',type:'力场',half:1,name:'密瑟能爆',cool:3},loot:[0,0]},
 };
 
 /* ---------------- 世界数据 ---------------- */
@@ -432,23 +454,28 @@ const PLANES={
   elemental:{n:'元素位面',pal:{12:'#5a4a3a',8:'#c24a1d',7:'#bcd8e8',2:'#7a3a1d'}},
   shadow:{n:'幽影位面',pal:{12:'#2e2e38',1:'#1d1d28',6:'#232333',3:'#12121c'}},
   fey:{n:'翡翠荒野',pal:{0:'#4aa85a',1:'#1d7a3a',12:'#8ac46a',3:'#2a8abf'}},
+  nether:{n:'耐瑟天空城',pal:{12:'#5c5395',1:'#3a3270',2:'#8f6fd0',7:'#b8c8e0',0:'#4f8f5f',11:'#2a1f5a'}},
 };
 const TILE_PASS={0:1,1:1,2:0,3:0,4:1,5:1,6:1,7:1,8:1,9:0,10:1,11:1,12:1,14:1};
 
 const REGIONS=[
-  {id:'plains',n:'翠风平原',rect:[3,6,45,32],enc:[['goblin',1,2],['wolf',1,2],['bandit',1,2]]},
   {id:'forest',n:'迷雾森林',rect:[26,1,47,14],enc:[['wolf',1,3],['spider',1,2],['goblin',1,3]]},
   {id:'frost',n:'霜脊山地',rect:[1,1,25,5],enc:[['winterwolf',1,1],['yeti',1,1],['orc',1,2]]},
   {id:'marsh',n:'幽影沼泽',rect:[1,28,20,35],enc:[['ghoul',1,2],['zombie',1,3],['shadow',1,1]]},
   {id:'ashen',n:'灰烬荒原',rect:[38,20,47,34],enc:[['imp',1,2],['orog',1,2],['fire_elemental',1,1]]},
   {id:'crater',n:'星陨裂谷',rect:[36,3,45,12],enc:[['skeleton',2,3],['specter',1,2]]},
+  {id:'moonwood',n:'月影林地',rect:[21,8,26,14],enc:[['wolf',1,3],['spider',1,2]]},
+  {id:'seabay',n:'东境海岬',rect:[44,15,47,18],enc:[['pirate',1,2],['thug',1,2]]},
+  {id:'dragonmaw',n:'龙岬荒原',rect:[38,15,43,18],enc:[['cultist',1,2],['skeleton',1,2],['orog',1,1]]},
   {id:'road',n:'王道商路',rect:[0,16,47,18],enc:[['bandit',1,3]]},
+  {id:'plains',n:'翠风平原',rect:[3,6,45,32],enc:[['goblin',1,2],['wolf',1,2],['bandit',1,2]]},
 ];
 const PLANE_ENC={
   astral:[['astral_raider',1,2],['specter',1,2]],
   elemental:[['fire_elemental',1,1],['ice_elemental',1,1]],
   shadow:[['shadow',2,3],['specter',1,2],['wraith',1,1]],
   fey:[['wolf',2,3],['fey_knight',1,1]],
+  nether:[['netherese_guard',1,2],['arcanist',1,1],['specter',1,2]],
 };
 
 const RUMORS=[
@@ -493,6 +520,7 @@ function defaultState(){
     planesUnlocked:{material:true},
     fog:{},shards:0,
     encounterCd:0,kills:0,days:1,
+    bounty:null,
     settings:{sound:true,bgm:true},
     log:[]
   };
@@ -503,11 +531,12 @@ const mod=s=>Math.floor((G.stats[s]-10)/2);
 const prof=()=>2+Math.floor((G.level-1)/4);
 const castMod=()=>{const c=CLASSES[G.cls];return c.casting?mod(c.casting):0;};
 const spellDC=()=>8+prof()+castMod();
-const spellAtk=()=>prof()+castMod();
+const spellAtk=()=>prof()+castMod()+(G.equip.trinket==='nethertome'?1:0);
 function skillMod(name){
   const ab=SKILLS[name];if(!ab)return mod('int');
   let v=mod(ab)+(G.skills.includes(name)?prof():0);
   if(G.flags.luckcharm)v+=1;
+  if(G.flags.mythallar)v+=1;
   if(G.weather==='fog'&&(name==='察觉'||name==='生存'))v-=2;
   if(G.flags.blessStar)v+=1;
   return v;
@@ -515,6 +544,7 @@ function skillMod(name){
 function saveMod(ab){
   let v=mod(ab)+(CLASSES[G.cls].saves.includes(ab)?prof():0);
   if(G.flags.blessStar)v+=1;
+  if(G.flags.mythallar)v+=1;
   return v;
 }
 function armorObj(){const e=G.equip.armor;return e?ITEMS[e]:null;}
@@ -594,6 +624,7 @@ function autoSave(){
    UI 基础
 ===================================================== */
 let curTab='story';
+let logFilter='all';
 function toast(t){
   const el=$('toast');el.textContent=t;el.classList.remove('hidden');
   el.classList.remove('fadein');void el.offsetWidth;el.classList.add('fadein');
@@ -685,6 +716,7 @@ const Game={
     G.fav[k]=Math.max(0,Math.min(100,G.fav[k]+n));
     const names={church:'星辉教会',ash:'灰烬兄弟会',shadow:'幽影议会',trade:'自由商盟'};
     Game.log(names[k]+'好感 '+(n>=0?'+':'')+n+'（当前 '+G.fav[k]+'）','sys');
+    if(G.fav[k]>=30)codexMark(k);
   },
   addShard(){
     G.shards++;giveItem('shard');
@@ -751,6 +783,10 @@ const Game={
       if(!raw)return false;
       G=JSON.parse(raw);
       G.created=true;
+      if(!G.flags)G.flags={};
+      if(!G.bounty)G.bounty=null;
+      if(!G.planesUnlocked)G.planesUnlocked={material:true};
+      if(!G.settings)G.settings={sound:true,bgm:true};
       switchTab('story');
       showGameUI();
       $('combatBar').classList.add('hidden');
@@ -770,7 +806,7 @@ const Game={
     $('endStats').innerHTML='冒险者：'+esc(G.name)+' · '+RACES[G.race].n+CLASSES[G.cls].n+' · '+G.level+'级<br>'+
       '历时 '+G.days+' 天 · 击杀 '+G.kills+' · 金币 '+G.gold+' · 经验 '+G.xp+'<br>'+
       '阵营好感：'+Object.keys(favn).map(k=>favn[k]+' '+G.fav[k]).join(' · ')+'<br>'+
-      '结局达成：'+e.n+'（共6种结局等你收集）';
+      '结局达成：'+e.n+'（共7种结局等你收集）';
     $('endingScreen').classList.remove('hidden');
     localStorage.removeItem(SAVE_KEY);
     SFX.play('level');
@@ -824,11 +860,11 @@ function genOverworld(){
 }
 function genPlane(pid){
   const w=32,h=24,rand=mulberry32(pid.length*777+42);
-  const base={astral:12,elemental:12,shadow:12,fey:0}[pid];
+  const base={astral:12,elemental:12,shadow:12,fey:0,nether:12}[pid];
   const t=new Array(w*h).fill(base);
   for(let i=0;i<w*h;i++){
     const r=rand();
-    if(pid==='astral'&&r<.14)t[i]=2;
+    if((pid==='astral'||pid==='nether')&&r<.14)t[i]=2;
     if(pid==='elemental'){if(r<.12)t[i]=8;else if(r<.2)t[i]=7;}
     if(pid==='shadow'&&r<.2)t[i]=1;
     if(pid==='fey'&&r<.3)t[i]=1;
@@ -839,7 +875,7 @@ function genPlane(pid){
     for(let y=cy-rad;y<=cy+rad;y++)for(let x=cx-rad;x<=cx+rad;x++){
       if(x<0||y<0||x>=w||y>=h)continue;
       const i=idx(x,y,w);
-      if(pid==='astral')t[i]=2;else if(pid==='elemental')t[i]=rand()<.5?8:7;
+      if(pid==='astral'||pid==='nether')t[i]=2;else if(pid==='elemental')t[i]=rand()<.5?8:7;
       else if(pid==='shadow')t[i]=3;else t[i]=1;
     }
   }
@@ -895,6 +931,15 @@ const LOCS=[
   {id:'f_tree',n:'宴会树',plane:'fey',x:16,y:8,g:'宴',desc:'一棵挂满灯笼的巨树，堕落妖精骑士在此举办永不散场的宴席。'},
   {id:'f_spring',n:'湖心泉',plane:'fey',x:8,y:16,g:'泉',desc:'翡翠荒野的治愈之泉。'},
   {id:'f_gate',n:'归途之门',plane:'fey',x:3,y:20,g:'门',desc:'回到主物质位面的传送门。'},
+  /* ---- 扩展地点（东境/月影/龙墓/幽暗/耐瑟） ---- */
+  {id:'eastport',n:'东境港',plane:'material',x:46,y:17,g:'港',desc:'悬崖下的深水港。海盗的船帆和商盟的旗号在同一个海湾里此起彼伏。'},
+  {id:'moonveil',n:'月影集落',plane:'material',x:24,y:12,g:'月',desc:'林间猎人的村落。每逢满月，村民紧闭门扉——狼嚎与歌声同时响起。'},
+  {id:'dragonmaw',n:'龙墓',plane:'material',x:40,y:17,g:'龙',desc:'古龙陨落之地，白骨如城墙。龙魂的残响在骨山之间低语，寻找能读懂它的人。'},
+  {id:'underdark',n:'幽暗地域入口',plane:'material',x:29,y:16,g:'洞',desc:'一处向下延伸的洞穴。黑暗浓稠如墨，深处有鳞片摩擦岩石的声音。'},
+  {id:'n_gate',n:'归途传送环',plane:'nether',x:3,y:20,g:'环',desc:'耐瑟的黄金传送环，环绕着回响千年的密瑟能。'},
+  {id:'n_archive',n:'耐瑟档案馆',plane:'nether',x:15,y:12,g:'馆',desc:'浮空城的记忆宫殿。书架漂浮在半空，一个灵体在其中整理着永远读不完的卷轴。'},
+  {id:'n_foundry',n:'密瑟能熔炉',plane:'nether',x:8,y:8,g:'炉',desc:'铸造神话的熔炉。冷却了千年，炉膛里仍有最后一点火光。'},
+  {id:'n_spire',n:'浮空城之塔',plane:'nether',x:22,y:6,g:'塔',desc:'天空城最高的尖塔。塔顶的王座上，坐着一个不肯死去的名字。'},
 ];
 function locAt(x,y,plane){
   return LOCS.find(l=>l.plane===(plane||G.plane)&&l.x===x&&l.y===y);
@@ -921,8 +966,8 @@ const NPCS={
           Game.log('艾德温压低声音：「一颗星辰坠进了东边的裂谷。四个位面的门扉随之洞开——星界、元素、幽影、翡翠。天上那颗『星』并未死去，它在坠落中变得……饥饿。」');
           Game.qst('m1',1);
           return node('「去四大阵营首领处取得信任与情报——教会的大祭司、灰烬要塞的瓦尔克、沼泽里的奈莎、驿站的菲娜。集齐四枚星核碎片，回到星陨坑，我们还有机会关上那扇门。在此之前……」他望向北方，「迷雾森林和霜脊常有怪物袭扰，若你顺手，帮镇子解决它们。」',[
-            {t:'「我会去的。」（接受指引）',fn:()=>{Game.favAdd('church',3);Game.qst('m1',2);Game.qdone('m1');Game.qst('m2',1);}},
-            {t:'「报酬怎么算？」',fn:()=>{gainGold(30);Game.favAdd('trade',3);Game.qst('m1',2);Game.qdone('m1');Game.qst('m2',1);}},
+            {t:'「我会去的。」（接受指引）',fn:()=>{Game.favAdd('church',3);Game.qst('m1',2);Game.qdone('m1');Game.qst('m2',1);codexMark('firstfall');}},
+            {t:'「报酬怎么算？」',fn:()=>{gainGold(30);Game.favAdd('trade',3);Game.qst('m1',2);Game.qdone('m1');Game.qst('m2',1);codexMark('firstfall');}},
           ]);
         }});
       }else if(!(G.quests.m2&&G.quests.m2.done)){
@@ -1094,6 +1139,21 @@ const NPCS={
         }});
       }
       opts.push({t:'购买武器护甲（进入商店）',fn:()=>{openShop('smith');}});
+      if(hasItem('dscale')&&G.gold>=120){
+        opts.push({t:'锻造【龙鳞甲】（古龙鳞片+120金币）',fn:()=>{
+          removeItem('dscale');gainGold(-120);
+          const old=G.equip.armor;if(old)giveItem(old,1);
+          G.equip.armor='scalearmor';
+          Game.log('布洛姆将龙鳞锤入火中，三天三夜。【龙鳞甲】铸成！','gain');SFX.play('level');
+          renderTopbar();renderStory();
+        }});
+      }
+      if(hasItem('dfang')&&G.gold>=100){
+        opts.push({t:'锻造【龙牙长枪】（龙牙+100金币）',fn:()=>{
+          removeItem('dfang');gainGold(-100);giveItem('dragonfang');
+          Game.log('龙牙在淬火中泛出雷光。【龙牙长枪】铸成！','gain');SFX.play('level');
+        }});
+      }
       opts.push({t:'告辞。',fn:null});
       return node('布洛姆头也不抬：「火不熄，锤不停。'+G.name+'，要买东西还是听锤子说话？」',opts);
     }},
@@ -1183,6 +1243,20 @@ const NPCS={
           G.hp=Math.min(G.hpMax,G.hp+R.roll('2d8'));Game.log(R.pick(RUMORS));
           return node('「记住：每一次检定都是命运在听你说话。」',[{t:'告辞。',fn:null}]);
         }});
+        if(f('archQ')&&!f('arch1p')){
+          opts.push({t:'「梅洛迪提到了一卷启蒙录。」',fn:()=>{
+            setF('arch1p');gainXp(150);
+            return node('米尔顿从星图夹层里抽出一卷焦页：「拿去吧。告诉档案馆的那位——米尔顿没有忘记柯曼索尔。」',[{t:'（获得启蒙录·卷一）',fn:null}]);
+          }});
+        }
+        if(!f('netherGate')){
+          opts.push({t:'「听说石阵下藏着天空城的传送环。」',fn:()=>{
+            setF('netherGate');setF('codex_titan');gainXp(200);
+            Game.log('米尔顿教给你唤醒咒文。光芒自石阵底部升起——耐瑟天空城的门，打开了。','quest');
+            Game.unlockPlane('nether','耐瑟天空城');
+            return node('「去吧。天空城还在等第一个访客——等了一千年。」',[{t:'（耐瑟天空城传送解锁）',fn:null}]);
+          }});
+        }
       }
       opts.push({t:'告辞。',fn:null});
       return node('米尔顿头也不抬地调着星盘：「占星师的晚年只有两个客人：风，和过去的自己。」',opts);
@@ -1194,10 +1268,14 @@ const NPCS={
       const gates=[
         ['astralUnlocked','星界','a_stravel'],['elementalUnlocked','元素位面','e_travel'],
         ['shadowUnlocked','幽影位面','s_travel'],['feyUnlocked','翡翠荒野','f_travel'],
+        ['netherGate','耐瑟天空城','n_travel'],
       ];
       gates.forEach(([flag,nm,act])=>{
-        opts.push({t:'前往【'+nm+'】',cond:()=>f(flag)&&G.plane==='material',fn:()=>{Dlg.close();travelTo(act==='a_stravel'?'astral':act==='e_travel'?'elemental':act==='s_travel'?'shadow':'fey');}});
+        opts.push({t:'前往【'+nm+'】',cond:()=>f(flag)&&G.plane==='material',fn:()=>{Dlg.close();travelTo(act==='a_stravel'?'astral':act==='e_travel'?'elemental':act==='s_travel'?'shadow':act==='n_travel'?'nether':'fey');}});
       });
+      if(G.plane==='material'&&!f('netherGate')){
+        opts.push({t:'「天空城该怎么去？」',fn:()=>Game.log('卡尔姆：「耐瑟的传送环沉在石阵之下。隐士米尔顿知道唤醒它的咒文。」')});
+      }
       if(G.plane==='material'){
         if(G.shards>=4){
           opts.push({t:'登上星核祭坛（终局抉择）',fn:()=>{Dlg.close();finaleDialog();}});
@@ -1210,6 +1288,128 @@ const NPCS={
       }
       opts.push({t:'告辞。',fn:null});
       return node('卡尔姆持戟立于坑沿：「门后是四个天地的碎片。'+G.name+'，门只对拿着钥匙的人开。」',opts);
+    }},
+  /* ---- 港督 马库斯（东境港） ---- */
+  maren:{name:'港督 马库斯',loc:'eastport',bio:'东境港的守港人，前商盟护航舰长。右臂是精铁假肢，锚钩比手更灵活。',
+    root(){
+      const opts=[];
+      if(!f('eastCleared')){
+        opts.push({t:'「港口最近不太平？」',fn:()=>{
+          Game.log('马库斯把海图拍在桌上：「黑旗帮占了外湾，商船十艘出去七艘回来。把它们清掉，港口的仓库随你挑一件。」');
+          Game.qst('maren1',1);
+          return node('「海盗的巢穴在防波堤外的礁区——去海湾东侧，把他们引出来。」',[{t:'「交给我。」',fn:null}]);
+        }});
+      }else if(!f('terrorDead')&&!f('terrorBossQ')){
+        opts.push({t:'「听说海底有更糟的东西？」',fn:()=>{
+          setF('terrorBossQ');Game.qst('maren2',1);
+          return node('「旧码头下的深渊，锁着一头吃船的东西。渔夫叫它‘深渊触须兽’。你若敢下水，港口的灯塔永世为你亮灯。」',[{t:'「去看看。」',fn:null}]);
+        }});
+      }
+      if(hasItem('deeppearl')){
+        opts.push({t:'出售深渊夜明珠（150金币）',fn:()=>{
+          removeItem('deeppearl');gainGold(150);Game.favAdd('trade',5);
+          return node('「好珠子！足够给灯塔换三盏灯油。」',[{t:'成交后告辞。',fn:null}]);
+        }});
+      }
+      opts.push({t:'查看赏金板',fn:()=>{Dlg.close();openBountyBoard();}});
+      opts.push({t:'港口市集（商店）',fn:()=>{Dlg.close();openShop('dock');}});
+      opts.push({t:'告辞。',fn:null});
+      return node('马库斯用锚钩敲了敲栏杆：「海上的规矩只有一条——别让船沉。'+G.name+'，你来是当水手，还是当英雄？」',opts);
+    }},
+  /* ---- 月影长者 莱拉（月影集落） ---- */
+  moon_elder:{name:'月影长者 莱拉',loc:'moonveil',bio:'月影集落的老猎人，能听懂狼群的语言。她的斗篷下藏着一把狼牙匕首。',
+    root(){
+      const opts=[];
+      if(f('moonSide')){
+        opts.push({t:'「后来怎样了？」',fn:()=>{
+          return node(f('moonSide')==='wolf'?'「狼群不再袭击猎道。夜里，它们会把鹿赶到村口——像在报恩。」':'「盗猎者清空后，狼群南迁了。商盟的皮货商踏平了我们村口的小路。」',[{t:'（点头告退）',fn:null}]);
+        }});
+      }else{
+        opts.push({t:'「村里有什么麻烦？」',fn:()=>{
+          Game.qst('moon1',1);
+          return node('「月夜的狼群与山外的盗猎者同时到了。帮助狼群，议会的眼线会记住你；帮助盗猎者，商盟的钱袋会记住你。选吧——在集落外的林地里了结。」',[{t:'「我会想清楚的。」',fn:null}]);
+        }});
+      }
+      opts.push({t:'听闻月影秘闻',fn:()=>{Game.log('莱拉低语：'+R.pick(RUMORS));Game.log('「月影林地里，每一只狼都记得一个死去猎人的名字。」','sys');}});
+      opts.push({t:'告辞。',fn:null});
+      return node('莱拉没有抬头：「月亮升起之前，狼和猎人没有区别。'+G.name+'，你属于哪一边？」',opts);
+    }},
+  /* ---- 龙墓回响（龙墓） ---- */
+  dragon_echo:{name:'龙墓回响',loc:'dragonmaw',bio:'古龙的残响在骨山间低语。它没有形体，只有声音与影。',
+    root(){
+      const opts=[];
+      if(!f('drags1')){
+        opts.push({t:'「谁在此长眠？」',fn:()=>{
+          Game.qst('drag1',1);
+          return node('「吾名银星·霜焰。星陨之夜，吾以龙骨封住裂谷一角——魂魄困于残躯。散去吾的【怒】（击散亡灵）、【焰】（惧火者）与【影】（古龙之影），三试皆过，鳞与牙归汝。」',[{t:'三试开始。',fn:null}]);
+        }});
+      }else if(!(G.quests.drag1&&G.quests.drag1.done)){
+        const done=(f('trialNecro')?1:0)+(f('trialFlame')?1:0)+(f('trialShade')?1:0);
+        opts.push({t:'「三试进度（'+done+'/3）」',fn:()=>{
+          if(done>=3){
+            Game.qdone('drag1');gainXp(600);giveItem('dscale');giveItem('dfang');
+            Game.log('龙魂之音渐远：「三试皆过。取吾鳞甲、吾牙——锤炉之人知道如何锻成神兵。」','gain');
+            return node('「再会，持钥者。愿汝的‘天空’，比吾的更长久。」',[{t:'（获得古龙鳞片·龙牙）',fn:null}]);
+          }
+          return node('「试炼未竟：怒、焰、影。去骨山的三处祭坛分别了结它们。」',[{t:'继续试炼。',fn:null}]);
+        }});
+      }else{
+        opts.push({t:'静听龙语',fn:()=>{gainXp(50);Game.log('龙语在骨间回荡，你聆听到古老的知识（+50经验）。','gain');}});
+      }
+      opts.push({t:'告退。',fn:null});
+      return node('骨山震颤，声音从四面八方传来——「凡人，汝为何打扰长眠者？」',opts);
+    }},
+  /* ---- 档案之灵 梅洛迪（耐瑟档案馆） ---- */
+  archivist:{name:'档案之灵 梅洛迪',loc:'n_archive',bio:'耐瑟档案馆的最后守护者，由密瑟能维持的灵体。说话时字句会排列成金色碑文。',
+    root(){
+      const opts=[];
+      if(!f('archQ')){
+        opts.push({t:'「这是哪里？」',fn:()=>{
+          Game.qst('arch1',1);setF('codex_nether');
+          return node('「柯曼索尔·浮空城·档案馆。吾是最后一位书记员。散佚的《耐瑟启蒙录》分作三卷：一卷在占星师米尔顿之手，二卷葬于密瑟熔炉，三卷被海港的凡人当成灯纸。」',[{t:'「我替你寻回。」',fn:null}]);
+        }});
+      }else if(!(G.quests.arch1&&G.quests.arch1.done)){
+        const pages=(f('arch1p')?1:0)+(f('arch2p')?1:0)+(f('arch3p')?1:0);
+        opts.push({t:'「启蒙录进度（'+pages+'/3）」',fn:()=>{
+          if(pages>=3){
+            Game.qdone('arch1');gainXp(700);giveItem('nethertome');setF('spireOpen');
+            Game.log('梅洛迪将三卷残页拼合一挥——书页化作【耐瑟启智法典】，光落在你的掌心。','gain');
+            return node('「浮空城之塔上的’那个名字‘仍不肯安息。带上它，去结束千年的回响。」',[{t:'（获得耐瑟启智法典）',fn:null}]);
+          }
+          return node('「去寻：米尔顿的一卷、熔炉的一卷、海港灯罩里的一卷。」',[{t:'继续寻回。',fn:null}]);
+        }});
+      }else if(!f('lichDead')){
+        opts.push({t:'「塔上的主宰是谁？」',fn:()=>{
+          return node('「耐瑟最后一任大法师，卡尔萨斯之影。他偷走了太阳，也偷走了自己的心跳。如今他只记得自己的名字——和一个熄灭的密瑟能核。」',[{t:'「该让他安息了。」',fn:null}]);
+        }});
+      }else{
+        opts.push({t:'聆听耐瑟往事（解锁典籍）',fn:()=>{setF('codex_mythallar');gainXp(100);Game.log('梅洛迪讲述浮空城极盛时的三条航道与七座天文塔。','gain');}});
+      }
+      opts.push({t:'告辞。',fn:null});
+      return node('灵体的目光穿过你：「时间在这里是一页可以翻回的书。'+G.name+'，你要读哪一页？」',opts);
+    }},
+  /* ---- 深鳞商人 咕噜姆（幽暗地域入口） ---- */
+  deep_merchant:{name:'深鳞商人 咕噜姆',loc:'underdark',bio:'盘踞幽暗入口的鳞裔商人。金币在黑暗中格外响亮——它听得到。',
+    root(){
+      const opts=[];
+      if(!f('deepQ')){
+        opts.push({t:'「你在这下面卖什么？」',fn:()=>{
+          Game.qst('deep1',1);
+          return node('「呼噜……上面人用的药、下面人挖的宝。洞穴深处有暗幕怪堵了我的矿道——清掉它们，我给你看最亮的那件货。」',[{t:'「矿石归我？」',fn:()=>Game.log('「呼噜！各凭本事。」')}]);
+        }});
+      }else if(!(G.quests.deep1&&G.quests.deep1.done)){
+        opts.push({t:'矿道清理进度',fn:()=>{
+          if(f('deepCleared')){
+            Game.qdone('deep1');gainXp(300);gainGold(80);giveItem('potion_greater');
+            Game.log('咕噜姆掀开石板：「最深的海蓝石，呼噜，拿去换钱。」你获得80金币与药剂。','gain');
+            return node('「下次再来，呼噜。」',[{t:'告辞。',fn:null}]);
+          }
+          return node('「洞还很黑，呼噜。带上你的火，也带上你的命。」',[{t:'下矿去。',fn:null}]);
+        }});
+      }
+      opts.push({t:'鳞裔黑市（商店）',fn:()=>{Dlg.close();openShop('under');}});
+      opts.push({t:'告辞。',fn:null});
+      return node('黑暗中两点黄光眨了眨：「买卖？呼噜。上面的金子，还是下面的命？」',opts);
     }},
 };
 
@@ -1236,6 +1436,12 @@ const QUESTS={
   mag1:{n:'银叶草（老麦格）',type:'支线',stages:['在迷雾森林采集3株银叶草（%d/3）','交付给老麦格']},
   finn1:{n:'民谣残页（芬恩）',type:'支线',stages:['寻回3页民谣残页（野外事件掉落）','交付给芬恩']},
   ella1:{n:'霜脊的雪怪（艾拉）',type:'支线',stages:['击杀霜脊雪怪','向艾拉复命']},
+  maren1:{n:'黑旗海盗（东境港）',type:'支线',stages:['清剿东境港外的黑旗海盗','向港督马库斯复命']},
+  maren2:{n:'深渊之下（东境港）',type:'支线',stages:['讨伐旧码头下的深渊触须兽']},
+  moon1:{n:'狼群之夜（月影集落）',type:'支线',stages:['在月影林地选择立场：帮助狼群或盗猎者']},
+  drag1:{n:'龙墓三试（龙墓）',type:'支线',stages:['通过龙魂的三试：怒、焰、影','领取古龙鳞片与龙牙']},
+  deep1:{n:'幽暗矿道（深鳞商人）',type:'支线',stages:['清剿幽暗矿道的暗幕怪']},
+  arch1:{n:'耐瑟启蒙录（档案馆）',type:'支线',stages:['寻回三卷《耐瑟启蒙录》','向梅洛迪复命']},
   stones:{n:'石阵的坐标',type:'支线',stages:['在古老石阵解读位面坐标（智力DC14）']},
   orb:{n:'龙魂低语',type:'支线',stages:['探索龙裔废墟，寻得龙息宝珠']},
 };
@@ -1263,6 +1469,8 @@ const ENDINGS={
     txt:'你松开了手。\n碎片没有飞向祭坛，而是散入四方——门扉大敞，诸位面如潮水般交融：星海漫过麦田，火焰在雪原上开出花，翡翠的藤蔓爬满幽影的城墙。\n这是个再没有「正常」的世界。有人说这是灾难，有人说这是自由。而你转身走进新世界的喧哗里，像走进一场未命名的盛宴。'},
   seal:{n:'结局六 · 以身为烛',cond:()=>true,
     txt:'祭坛需要的不只是碎片，还需要一个自愿的锚。\n你走向裂口中央，把碎片按进自己的胸膛。光从你的指缝、眼眶、心跳里满溢出来——位面壁垒以你为轴重新闭合。\n天空愈合了。新月镇立起一座没有名字的石像，孩子们往它手里放野花。夜里最亮的那颗星，据说会眨眼。'},
+  nether:{n:'结局七 · 浮空纪元',cond:()=>G.shards>=4&&f('mythallar'),
+    txt:'你没有把密瑟能核留给死者。耐瑟的黄金回路在你的掌心重新点亮，浮空城的轮廓自星界边缘升起。\n航道重开，天空成为新的商路。后世将这个时代称为「浮空纪元」——而第一座复活的天城，以你的母语命名为「艾瑟洛斯」。'},
 };
 
 /* =====================================================
@@ -1273,6 +1481,9 @@ const SHOPS={
   herb:{n:'老麦格的药篮',list:['potion_heal','potion_greater','potion_fire']},
   trade:{n:'商盟货栈',list:['potion_heal','scroll_magic','shortbow','longbow','leather','studded','dragonorb']},
   shadowmarket:{n:'影都黑市',list:['potion_greater','potion_fire','greatsword']},
+  dock:{n:'东境港市集',list:['potion_heal','potion_fire','longsword','shortbow','studded','chainshirt']},
+  under:{n:'鳞裔黑市',list:['potion_greater','potion_fire','dragonorb','greatsword','studded']},
+  archive:{n:'耐瑟知识商店',list:['scroll_magic','nethertome']},
 };
 function openShop(shopId){
   const s=SHOPS[shopId];
@@ -1590,6 +1801,7 @@ const Combat={
         Game.log('偷袭！附加 '+sd+'d6 精准伤害。','combat');
       }
       if(wpn.id==='starblade')dmg+=R.roll('1d4');
+      if(wpn.id==='dragonfang')dmg+=R.roll('1d4');
     }
     this.applyDamage(def,dmg,wpn.type||'挥砍',att);
   },
@@ -1609,6 +1821,10 @@ const Combat={
         if(def.m.tag==='undead')G.flags.undeadKills=(G.flags.undeadKills||0)+1;
         if(def.tid==='yeti')setF('yetiDead');
         G.kills++;
+        if(G.bounty&&!G.bounty.claimed&&def.tid===G.bounty.monster){
+          G.bounty.done=Math.min(G.bounty.need,G.bounty.done+1);
+          Game.log('赏金进度：'+G.bounty.done+'/'+G.bounty.need+'（'+G.bounty.name+'）','quest');
+        }
         this.checkEnd();
       }
     }
@@ -2048,7 +2264,7 @@ function tryMove(dx,dy){
   renderAll();
 }
 function wildEvent(){
-  const evs=['shrine','cache','trap','rumor'];
+  const evs=['shrine','cache','trap','rumor','lore','lore'];
   if(f('finnQ')&&(G.flags.pageCount||0)<3)evs.push('page','page');
   if(f('magQ')&&(G.flags.herbCount||0)<3)evs.push('herb');
   if(f('bloomQ')&&!hasItem('ore'))evs.push('ore');
@@ -2077,6 +2293,7 @@ function wildEvent(){
       }else Game.log('你侧身避开了尖刺。');
       break;}
     case 'rumor':Game.log('路旁刻着褪色的字迹：'+R.pick(RUMORS),'sys');break;
+    case 'lore':Game.log(R.pick(WHISPERS),'sys');break;
     case 'page':G.flags.pageCount=(G.flags.pageCount||0)+1;giveItem('page');break;
     case 'herb':G.flags.herbCount=(G.flags.herbCount||0)+1;giveItem('herb');break;
     case 'ore':giveItem('ore');break;
@@ -2122,6 +2339,8 @@ function travelTo(plane){
   revealFog();
   rollWeather();
   Game.log('你穿越位面之门，抵达【'+PLANES[plane].n+'】。','quest');
+  const cmap={astral:'astralsea',elemental:'elements',shadow:'shadowland',fey:'summer'};
+  if(cmap[plane])codexMark(cmap[plane]);
   banner(PLANES[plane].n);
   renderAll();
   if(scene)scene.refreshAll();
@@ -2131,6 +2350,7 @@ function enterLoc(loc){
   banner(loc.n+' · '+PLANES[loc.plane].n);
   Game.log('【'+loc.n+'】'+loc.desc,'sys');
   SFX.play('open');
+  if(loc.id==='newmoon')codexMark('newmoon');
   // 特殊触发
   if(loc.id==='ford'&&!f('fordSeen')){
     setF('fordSeen');
@@ -2144,7 +2364,7 @@ function showLocMenu(loc){
   // NPC
   const npcsHere=Object.keys(NPCS).filter(k=>NPCS[k].loc===loc.id);
   npcsHere.forEach(k=>{
-    if(loc.plane==='material'||k==='calm')acts.push({t:'与【'+NPCS[k].name+'】交谈',fn:()=>{closeModal();Dlg.open(k);}});
+    if(loc.plane==='material'||k==='calm'||k==='archivist'||k==='deep_merchant')acts.push({t:'与【'+NPCS[k].name+'】交谈',fn:()=>{closeModal();Dlg.open(k);}});
   });
   // 通用
   if(loc.id==='newmoon'){
@@ -2200,9 +2420,85 @@ function showLocMenu(loc){
         onWin:()=>{setF('fordCleared');gainXp(100);Game.log('土匪溃逃。现在可以向菲娜或奈莎复命了。','quest');}});
     }});
   }
+  if(loc.id==='tradehall'){
+    acts.push({t:'查看赏金板（可重复接单）',fn:()=>{closeModal();openBountyBoard();}});
+  }
+  if(loc.id==='ashen'){
+    acts.push({t:'进入灰烬斗技场（可重复打擂）',fn:()=>{closeModal();openArena();}});
+  }
   if(loc.id==='crater'&&G.plane==='material'){
     if(G.shards>=4)acts.push({t:'登上星核祭坛（终局）',fn:()=>{closeModal();finaleDialog();}});
     else acts.push({t:'检查祭坛（需要4枚碎片）',fn:()=>{closeModal();Game.log('四道凹槽中只有 '+G.shards+' 枚碎片在发光。门扉沉默不语。');}});
+  }
+  /* ---- 扩展地点行为 ---- */
+  if(loc.id==='eastport'){
+    if(!f('eastCleared'))acts.push({t:'清剿黑旗海盗（战斗）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['pirate',2],['thug',2]],intro:'海盗从礁区后涌出：「这船留下，命也留下！」',
+        onWin:()=>{setF('eastCleared');Game.qdone('maren1');gainXp(500);gainGold(150);Game.favAdd('trade',10);giveItem(R.pick(['potion_heal','scroll_magic']));setF('arch3p');setF('codex_eastport');Game.log('灯塔下找到一卷被当作灯纸的古籍——启蒙录·卷三。','gain');}});
+    }});
+    else if(!f('terrorDead'))acts.push({t:'讨伐深渊触须兽（BOSS战）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['deep_terror',1]],intro:'旧码头下的海水如墨翻涌，数条触须掀开了栈桥！',
+        onWin:()=>{setF('terrorDead');Game.qdone('maren2');gainXp(800);giveItem('deeppearl');Game.favAdd('trade',10);Game.log('触须沉回深渊，一颗夜明珠留在滩涂上。','gain');}});
+    }});
+    acts.push({t:'查看赏金板',fn:()=>{closeModal();openBountyBoard();}});
+  }
+  if(loc.id==='moonveil'&&!f('moonSide')){
+    acts.push({t:'帮助狼群（对抗盗猎者）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['thug',2],['bandit',2]],intro:'盗猎者的陷阱网里哀鸣阵阵，狼群在你身后汇集。',
+        onWin:()=>{setF('moonSide','wolf');Game.qdone('moon1');gainXp(450);gainGold(120);Game.favAdd('shadow',12);giveItem('potion_greater');Game.log('狼群舔了舔你的手，消失在月影深处。','gain');setF('codex_moonveil');}});
+    }});
+    acts.push({t:'帮助盗猎者（围猎狼群）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['wolf',3],['winterwolf',1]],intro:'头狼立于月下，狼群将你与盗猎者团团围住。',
+        onWin:()=>{setF('moonSide','hunter');Game.qdone('moon1');gainXp(450);gainGold(200);Game.favAdd('trade',12);Game.log('皮货的价格里从此掺着你剑上的狼血。','gain');setF('codex_moonveil');}});
+    }});
+  }
+  if(loc.id==='dragonmaw'&&f('drags1')&&!(G.quests.drag1&&G.quests.drag1.done)){
+    if(!f('trialNecro'))acts.push({t:'第一试 · 怒（击散盘踞的亡灵）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['skeleton',2],['specter',1]],intro:'骨山间，不肯安息的亡灵苏醒了。',
+        onWin:()=>{setF('trialNecro');gainXp(300);Game.log('第一试通过——怒已散。','gain');}});
+    }});
+    if(!f('trialFlame'))acts.push({t:'第二试 · 焰（镇压惧火之惧）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['fire_elemental',1],['cultist',2]],intro:'龙息残留在骨缝里的野火，凝成了人形。',
+        onWin:()=>{setF('trialFlame');gainXp(350);Game.log('第二试通过——焰已熄。','gain');}});
+    }});
+    if(!f('trialShade'))acts.push({t:'第三试 · 影（直面古龙之影）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['dragon_shade',1]],intro:'龙魂的暗影自骨山站起，双瞳如熄灭的日轮。',
+        onWin:()=>{setF('trialShade');gainXp(500);Game.log('第三试通过——影已散。','gain');setF('codex_dragonmaw');}});
+    }});
+  }
+  if(loc.id==='underdark'){
+    if(!f('deepCleared'))acts.push({t:'深入幽暗矿道（战斗）',fn:()=>{
+      closeModal();
+      Combat.start({monsters:[['darkmantle',2],['spider',1]],intro:'矿道深处，暗幕怪如黑雾般从顶壁坠落。',
+        onWin:()=>{setF('deepCleared');Game.qdone('deep1');gainXp(400);Game.log('矿道清通了，鳞片摩擦声向更深处退去。','gain');setF('codex_underdark');}});
+    }});
+  }
+  if(loc.id==='n_foundry'){
+    if(f('archQ')&&!f('arch2p')){
+      acts.push({t:'取回熔炉中的启蒙录·卷二（战斗）',fn:()=>{
+        closeModal();
+        Combat.start({monsters:[['netherese_guard',2],['arcanist',1]],intro:'熔炉的守卫程序仍在运行：保护典籍，消灭入侵者。',
+          onWin:()=>{setF('arch2p');gainXp(450);Game.log('炉膛深处，一卷耐瑟典籍毫发无损。启蒙录·卷二入手。','gain');}});
+      }});
+    }
+  }
+  if(loc.id==='n_spire'){
+    if(f('spireOpen')&&!f('lichDead')){
+      acts.push({t:'终结浮空城主宰（传说BOSS战）',fn:()=>{
+        closeModal();
+        Combat.start({monsters:[['lich_lord',1]],intro:'「我是卡尔萨斯。我记得太阳。」——千年的干枯声自王座传来。',
+          onWin:()=>{setF('lichDead');setF('mythallar');giveItem('mythallar');gainXp(1200);gainGold(400);setF('codex_lich');Game.log('主宰化作飞灰，一枚熄灭千年的密瑟能核滚到你脚边——又亮了起来。','gain');toast('获得密瑟能核残片！');}});
+      }});
+    }else if(f('lichDead')){
+      acts.push({t:'静立于空王座前',fn:()=>{closeModal();Game.log('风从没有尽头的塔顶吹过。天空城的下方，云层如海。');}});
+    }
   }
   // 位面场景
   if(loc.id==='a_hulk'&&!f('shardA')){
@@ -2333,6 +2629,7 @@ function finaleDialog(){
   add('拍卖星核（商盟主导：商盟好感≥60 且金币≥3000）',()=>G.fav.trade>=60&&G.gold>=3000,null,()=>Game.ending('gold'));
   add('放开手，让位面自由交融（无前提）',()=>true,null,()=>Game.ending('free'));
   add('以身为烛，封印裂隙（无前提）',()=>true,null,()=>Game.ending('seal'));
+  add('重建浮空城（耐瑟遗产：需密瑟能核）',()=>f('mythallar'),'耐瑟遗产——需要密瑟能核',()=>Game.ending('nether'));
   let html='<h3 class="text-lg font-bold text-ink mb-2">终局抉择</h3><p class="text-xs text-parch-700 mb-3">星灵的问题在颅腔里回荡。每个选择都是一个结局——选吧。</p><div class="space-y-1">';
   opts.forEach(o=>{
     if(o.lock)html+='<div class="btn w-full text-left" style="opacity:.4;cursor:not-allowed">（未达成）'+esc(o.lock)+'</div>';
@@ -2379,6 +2676,7 @@ class WorldScene extends Phaser.Scene{
     const m=getMap(G.plane);
     this.cameras.main.setBounds(0,0,m.w*TS,m.h*TS);
     this.cameras.main.startFollow(this.player,true,.15,.15);
+    this.unitG.clear();
     this.drawTerrain();this.drawObjects();this.drawFog();this.drawPlayer();this.drawOverlay();
   }
   drawTerrain(){
@@ -2568,18 +2866,24 @@ function renderStory(){
   if(Dlg.active&&Dlg.node){box.innerHTML=renderDialogue();box.scrollTop=box.scrollHeight;return;}
   if(curTab==='story'){
     let html='';
-    G.log.slice(-120).forEach(l=>{
-      html+='<div class="logline '+(l.c?'log-'+l.c:'')+'">'+esc(l.t)+'</div>';
-    });
-    if(!html)html='<div class="text-sm text-parch-600">（暂无记录）</div>';
+    const chips=[['all','全部'],['story','剧情'],['quest','任务'],['combat','战斗'],['gain','获得'],['roll','检定'],['sys','系统']];
+    html+='<div class="flex gap-1 mb-2 flex-wrap">';
+    chips.forEach(([k,n])=>{html+=`<button class="chip ${logFilter===k?'on':''}" onclick="setLogFilter('${k}')">${n}</button>`;});
+    html+='</div>';
+    const pass=l=>{if(logFilter==='all')return true;if(logFilter==='story')return !l.c;return l.c===logFilter;};
+    const list=G.log.slice(-160).filter(pass);
+    list.forEach(l=>{html+='<div class="logline '+(l.c?'log-'+l.c:'')+'">'+esc(l.t)+'</div>';});
+    if(!list.length)html+='<div class="text-sm text-parch-600">（该分类暂无记录）</div>';
     box.innerHTML=html;
     box.scrollTop=box.scrollHeight;
   }else if(curTab==='char')renderChar(box);
   else if(curTab==='inv')renderInv(box);
   else if(curTab==='spell')renderSpells(box);
   else if(curTab==='quest')renderQuests(box);
+  else if(curTab==='codex')renderCodex(box);
   else if(curTab==='sys')renderSys(box);
 }
+window.setLogFilter=function(k){logFilter=k;SFX.play('click');switchTab('story');};
 function renderChar(box){
   const c=CLASSES[G.cls],rc=RACES[G.race],bg=BGS[G.bg];
   const favn=[['church','星辉教会','#8a7030'],['ash','灰烬兄弟会','#8a4030'],['shadow','幽影议会','#4a3a5a'],['trade','自由商盟','#3f6d33']];
@@ -2717,21 +3021,31 @@ window.castOutOfCombat=function(sid){
   renderTopbar();renderStory();
 };
 function renderQuests(box){
-  let html='<div class="space-y-1">';
-  let any=false;
-  Object.keys(QUESTS).forEach(id=>{
-    const st=G.quests[id];
-    const active=st&&!st.done;
-    const recent=st&&st.done;
-    if(!active&&!recent)return;
-    any=true;
-    const q=QUESTS[id];
-    const col=q.type==='主线'?'text-blood':q.type==='阵营'?'text-arc':'text-sage';
-    html+='<div class="card '+(active?'sel':'')+'"><div class="text-xs font-bold '+col+'">['+q.type+']</div><b class="text-sm">'+esc(q.n)+'</b>'+
-      '<div class="text-xs text-parch-700 mt-1">'+esc(questText(id))+'</div>'+(st.done?'<div class="text-xs text-sage mt-1">已完成</div>':'')+'</div>';
+  let html='';
+  const types=['主线','阵营','支线'];
+  let total=0;
+  types.forEach(type=>{
+    const ids=Object.keys(QUESTS).filter(id=>QUESTS[id].type===type&&G.quests[id]);
+    if(!ids.length)return;
+    html+='<div class="font-bold text-sm mb-1 mt-2 '+(type==='主线'?'text-blood':type==='阵营'?'text-arc':'text-sage')+'">◆ '+type+'</div><div class="space-y-1">';
+    ids.forEach(id=>{
+      const st=G.quests[id];
+      const active=st&&!st.done;
+      const q=QUESTS[id];
+      total++;
+      html+='<div class="card '+(active?'sel':'')+'"><b class="text-sm">'+esc(q.n)+'</b>'+
+        '<div class="text-xs text-parch-700 mt-1">'+esc(questText(id))+'</div>'+(st.done?'<div class="text-xs text-sage mt-1">已完成</div>':'')+'</div>';
+    });
+    html+='</div>';
   });
-  if(!any)html+='<div class="text-sm text-parch-600">（暂无任务——去新月镇找镇长艾德温）</div>';
-  html+='</div>';
+  if(!total)html+='<div class="text-sm text-parch-600">（暂无任务——去新月镇找镇长艾德温）</div>';
+  // 赏金
+  html+='<div class="font-bold text-sm mb-1 mt-3 text-parch-600">◆ 赏金</div>';
+  if(G.bounty&&!G.bounty.claimed&&G.bounty.monster){
+    html+='<div class="card sel"><b class="text-sm">'+esc(G.bounty.name)+'</b><div class="text-xs text-parch-700 mt-1">击杀 '+MONSTERS[G.bounty.monster].n+'（'+Math.min(G.bounty.done,G.bounty.need)+'/'+G.bounty.need+'），到告示板交单领赏</div></div>';
+  }else{
+    html+='<div class="text-xs text-parch-600">（无进行中的悬赏——可到东境港或商路驿站查看告示板）</div>';
+  }
   box.innerHTML=html;
 }
 function renderSys(box){
@@ -2745,7 +3059,7 @@ function renderSys(box){
   html+='<button class="btn btn-blue" onclick="rollDice(\'优势d20\',20,1)">优势d20</button>';
   html+='<button class="btn btn-blue" onclick="rollDice(\'劣势d20\',20,-1)">劣势d20</button>';
   html+='</div></div>';
-  html+='<div class="card"><b class="text-sm">冒险统计</b><div class="mt-1 text-parch-700">历时 '+G.days+' 天 · 击杀 '+G.kills+' · 位面 '+Object.keys(G.planesUnlocked).length+'/5 · 星核 '+G.shards+'/4</div></div>';
+  html+='<div class="card"><b class="text-sm">冒险统计</b><div class="mt-1 text-parch-700">历时 '+G.days+' 天 · 击杀 '+G.kills+' · 位面 '+Object.keys(G.planesUnlocked).length+'/6 · 星核 '+G.shards+'/4 · 典籍 '+CODEX.filter(function(c){return codexOpen(c.id);}).length+'/'+CODEX.length+'</div></div>';
   html+='<div class="card"><b class="text-sm">操作</b><div class="mt-1 text-parch-700">WASD/方向键或点击相邻格移动。走到地点图块触发事件。战斗中点击格子/敌人执行动作。</div></div>';
   html+='</div>';
   box.innerHTML=html;
@@ -2759,6 +3073,143 @@ window.rollDice=function(name,sides,adv){
 };
 window.Game=Game;window.closeModal=closeModal;window.toast=toast;
 window.Dlg=Dlg;window.longRest=longRest;window.shortRest=shortRest;
+
+/* =====================================================
+   世界典籍 / 赏金板 / 竞技场（开放世界系统）
+===================================================== */
+const CODEX=[
+ {id:'titan',cat:'创世纪',n:'泰坦纪元',hint:'与隐士米尔顿交谈',txt:'传说在诸神之前，泰坦以龙骨为梁、星尘为泥，筑起艾瑟洛斯的山河。他们沉入地底时，把自己的心跳留给了山脉——所以霜脊的山夜里总有微弱的温热。'},
+ {id:'firstfall',cat:'创世纪',n:'第一次星陨',hint:'完成主线第一章',txt:'耐瑟的学者相信，星陨并非第一次发生。龙骨地层中的焦痕显示，至少三千年前曾有另一颗「锚」坠落。它带来的不是灾变，而是魔法本身——有人说，那就是魔网的源头。'},
+ {id:'nether',cat:'耐瑟遗产',n:'浮空城柯曼索尔',hint:'到访耐瑟档案馆',txt:'耐瑟帝国的法师们用密瑟能核让城市升入云海。柯曼索尔是其中最美的一座：七座天文塔、三条黄金航道，以及一座从不关闭的档案馆。星陨之夜后，它坠入自己的影子，成了如今的天城废墟。'},
+ {id:'karsus',cat:'耐瑟遗产',n:'卡尔萨斯之影',hint:'聆听梅洛迪的往事',txt:'卡尔萨斯，耐瑟末代大法师。传说他试图「偷走太阳的面纱」，却让整座天空城在光中崩塌。如今他以不死的残响坐在塔顶，只记得两件事：自己的名字，和一个不肯熄灭的念头。'},
+ {id:'mythallar',cat:'耐瑟遗产',n:'密瑟能核',hint:'击破浮空城主宰',txt:'密瑟能核是耐瑟文明的心——一颗可以抽取魔网、维系整座城市悬浮的晶核。残片至今仍在缓慢发光。学者们说，谁让熄灭的能核重新亮起，谁就继承了天空城的遗志。'},
+ {id:'summer',cat:'位面志',n:'翡翠荒野',hint:'抵达翡翠荒野',txt:'妖精荒野的一角。这里的「时间」用四季记账，而妖精用「记忆」付账。湖心泉的水可以治愈肉身，却不能治愈被它记住的往事。'},
+ {id:'shadowland',cat:'位面志',n:'幽影位面',hint:'抵达幽影位面',txt:'并非死者的国度，而是「影子们」的世界。静默回廊中的幽魂并非亡者本身，而是亡者被遗忘的那一半。听不见的声音、走不到的脚步，都在那里堆积。'},
+ {id:'elements',cat:'位面志',n:'元素位面',hint:'抵达元素位面',txt:'火与冰在元素位面永无止境地角力。圣殿的看守并非「看守」，而是平衡本身的两张脸：一冷一热，同样永恒。'},
+ {id:'astralsea',cat:'位面志',n:'星界之海',hint:'抵达星界',txt:'星界是诸位面之间的深水。观星台的灯一千年没有熄灭。教会的老人们说：只要还有人在星界点灯，迷失的灵魂就找得到回家的大致方向。'},
+ {id:'factions',cat:'势力',n:'四大阵营',hint:'与四位阵营领袖分别交谈',txt:'星辉教会守着「过去」；灰烬兄弟会烧掉「过去」；幽影议会收藏「过去」；自由商盟给「过去」标价。有人说，他们正是同一枚星核的一分为四。'},
+ {id:'newmoon',cat:'地理志',n:'新月镇',hint:'到访新月镇',txt:'星陨之夜前，这里只是王道上一个普通的驿镇。如今它是幸存者、难民与各路探子的交汇点。钟楼上的裂痕至今没有修复——镇民说，让裂痕留着，好提醒后人仰望天空。'},
+ {id:'eastport',cat:'地理志',n:'东境港',hint:'到访东境港',txt:'东境海岬的深水港。钓鱼人和走私客在这里共用一条栈桥。灯塔的灯油由全体船主分摊——这是海港唯一的「税」。'},
+ {id:'moonveil',cat:'地理志',n:'月影集落',hint:'了结月影林地的立场纷争',txt:'月影集落人与狼共处了七代。传说第一代长老是一头会变人的狼。每到月圆，村里的孩子要去给狼群唱歌——狼群回了多少声，来年就有多少个新生儿。'},
+ {id:'dragonmaw',cat:'地理志',n:'龙墓',hint:'通过龙墓三试',txt:'古龙银星·霜焰的埋骨地。星陨之夜，它以龙躯封住裂谷一角，如今魂魄仍在残躯中守望。龙类没有墓碑，它们的名字就是碑。'},
+ {id:'underdark',cat:'地理志',n:'幽暗地域',hint:'清通幽暗矿道',txt:'地底世界的一角，比深渊更深、比影子更静。鳞裔、菌裔与说不出来历的东西在黑暗中做买卖。这里的法则只有一条：带光进来的，负责把它带出去。'},
+ {id:'lich',cat:'传奇',n:'空王座',hint:'终结浮空城主宰',txt:'浮空城之塔的王座空了。有人说，杀死一个「记得太阳」的东西，并不会让太阳更亮一点——但至少，千年的回响终于选择了安静。'},
+ {id:'church',cat:'势力',n:'星辉教会',hint:'教会好感达到30',txt:'星辉教会相信：每一位神都是一颗不曾坠落的星。圣典的第一页画着一扇门，最后一页画着同一扇门——中间的一千页，是所有人推门的方式。'},
+ {id:'ash',cat:'势力',n:'灰烬兄弟会',hint:'灰烬好感达到30',txt:'兄弟会的第一条会规刻在熔炉上：「烧掉没用的过去，包括这句。」他们收集坠星残骸，不是因为信仰，而是因为那玩意儿最好用来打铁。'},
+ {id:'shadow',cat:'势力',n:'幽影议会',hint:'幽影好感达到30',txt:'议会不投票，只「数影子」。影主的裁决从不说出口——她的影子会先点头。想加入的人必须献上一段真实的记忆；很多年过去了，没人知道这些记忆被用在了哪里。'},
+ {id:'trade',cat:'势力',n:'自由商盟',hint:'商盟好感达到30',txt:'商盟的《行商宪章》只有一条正文：「所有东西都有价格，包括这条。」每年星陨纪念日，商盟会拍卖「明年最先过河的权利」——已经拍出了一百年后。'},
+ {id:'dragons',cat:'传奇',n:'龙族七戒',hint:'通过龙墓三试',txt:'龙族有七条戒律：不食泣者、不焚耕者、不欺幼者、不背誓约、不眠于他人之碑、不弃同族之卵、不唤星陨之名。人们记住七戒，是因为每条戒律背后都有一段用鳞片偿还的故事。'},
+ {id:'relics',cat:'神器',n:'神器录',hint:'集齐任意两件传奇装备',txt:'星辉长剑、龙牙长枪、龙鳞甲、密瑟能核、灵感徽章……记录者们坚持认为，神器不选主人，只选「恰好走到故事转折处的人」。'},
+];
+const CODEX_PRED={
+  factions:()=>f('churchQ1')&&f('ashQ1')&&f('shadowQ1')&&f('tradeQ1'),
+  firstfall:()=>G.quests.m1&&G.quests.m1.done,
+  relics:()=>['starblade','dragonfang','scalearmor','mythallar','luckcharm'].filter(i=>hasItem(i)||G.equip.weapon===i||G.equip.armor===i||G.equip.trinket===i).length>=2,
+};
+function codexOpen(id){return G&&(f('codex_'+id)||(CODEX_PRED[id]&&CODEX_PRED[id]()));}
+function codexMark(id){if(!f('codex_'+id)){setF('codex_'+id);Game.log('【典籍解锁】'+CODEX.find(c=>c.id===id).n,'sys');}}
+
+/* ---- 赏金板（可重复） ---- */
+const BOUNTIES=[
+ {name:'哥布林劫匪',monster:'goblin',need:4,gold:40,xp:120,region:'any'},
+ {name:'土匪头目',monster:'bandit',need:3,gold:50,xp:150,region:'road'},
+ {name:'乱坟亡灵',monster:'skeleton',need:4,gold:60,xp:180,region:'crater'},
+ {name:'沼泽僵尸',monster:'zombie',need:3,gold:55,xp:160,region:'marsh'},
+ {name:'幽影残响',monster:'shadow',need:2,gold:70,xp:200,region:'marsh'},
+ {name:'林间狼患',monster:'wolf',need:4,gold:45,xp:140,region:'forest'},
+ {name:'荒野食人魔',monster:'ogre',need:1,gold:90,xp:260,region:'plains'},
+ {name:'石像鬼谜案',monster:'gargoyle',need:2,gold:110,xp:320,region:'ashen'},
+ {name:'码头打手',monster:'thug',need:3,gold:60,xp:180,region:'seabay'},
+ {name:'雪原白灾',monster:'winterwolf',need:2,gold:120,xp:350,region:'frost'},
+];
+function bountyProgress(){
+  if(!G.bounty||!G.bounty.monster)return null;
+  const b=G.bounty;
+  if(b.claimed)return null;
+  return '('+Math.min(b.done,b.need)+'/'+b.need+')';
+}
+function openBountyBoard(){
+  if(G.bounty&&!G.bounty.claimed&&G.bounty.done>=G.bounty.need){
+    gainGold(G.bounty.gold);gainXp(G.bounty.xp);G.bounty.claimed=true;
+    Game.log('赏金【'+G.bounty.name+'】已交付！获得 '+G.bounty.gold+' 金币。','gain');
+    renderTopbar();
+  }
+  let html='<h3 class="text-lg font-bold text-ink mb-1">悬赏告示板</h3>';
+  if(G.bounty&&G.bounty.claimed){
+    html+='<p class="text-xs text-parch-700 mb-2">上一单已完成。领取新的悬赏吧。</p>';
+  }else if(G.bounty){
+    html+='<p class="text-xs text-parch-700 mb-2">进行中：<b>'+esc(G.bounty.name)+'</b> '+bountyProgress()+'（击杀同名目标自动计数，回来交单）</p>';
+  }
+  html+='<div class="space-y-1">';
+  R.shuffle(BOUNTIES).slice(0,5).forEach(b=>{
+    const busy=G.bounty&&!G.bounty.claimed;
+    html+='<div class="card flex items-center gap-2 text-xs"><div class="flex-1"><b>'+esc(b.name)+'</b> — '+MONSTERS[b.monster].n+'×'+b.need+' <span class="text-parch-600">（'+b.gold+'金 · '+b.xp+'经验）</span></div>'+
+      '<button class="btn" '+(busy?'disabled':'')+' onclick="takeBounty(\''+b.monster+'\',\''+b.name.replace(/'/g,'')+'\','+b.need+','+b.gold+','+b.xp+')">'+(busy?'接单中':'接单')+'</button></div>';
+  });
+  html+='</div><div class="text-xs text-parch-600 mt-2">赏金目标在野外随机遭遇中出现。一次只能接一单，可无限续单。</div>';
+  html+='<div class="text-right mt-3"><button class="btn" onclick="closeModal()">离开</button></div>';
+  openModal(html);
+}
+window.openBountyBoard=openBountyBoard;
+window.takeBounty=function(monster,name,need,gold,xp){
+  if(G.bounty&&!G.bounty.claimed){toast('先完成手中的悬赏');return;}
+  G.bounty={monster,name,need,done:0,gold,xp,claimed:false};
+  Game.log('接下悬赏【'+name+'】：击杀 '+need+' 只'+MONSTERS[monster].n+'。','quest');
+  closeModal();renderStory();
+};
+
+/* ---- 竞技场（可重复） ---- */
+const ARENA=[
+ {n:'新手试炼',fee:10,prize:35,enemies:[['wolf',1],['thug',2]],intro:'竞技场主持敲钟：「新手试炼——活下来，或者哭着下来！」'},
+ {n:'勇士之环',fee:60,prize:150,enemies:[['orc',2],['orog',1]],intro:'「勇士之环！门票不退，胜利翻倍！」'},
+ {n:'冠军之夜',fee:200,prize:420,enemies:[['gargoyle',2],['ogre',1]],intro:'「冠军之夜——今晚的观众只为一件事而来：血。」'},
+ {n:'深渊特别场',fee:400,prize:800,enemies:[['fire_elemental',1],['star_golem',1]],intro:'「特别场！来自位面彼端的怪物，与你，只有一个能走出去。」'},
+];
+function openArena(){
+  let html='<h3 class="text-lg font-bold text-ink mb-1">灰烬斗技场</h3>'+
+  '<p class="text-xs text-parch-700 mb-2">连胜有赏，横着出去不退款。胜利可获得金币并提升灰烬兄弟会好感。</p><div class="space-y-1">';
+  ARENA.forEach((a,i)=>{
+    html+='<div class="card flex items-center gap-2 text-xs"><div class="flex-1"><b>'+esc(a.n)+'</b> <span class="text-parch-600">入场'+a.fee+'金 → 优胜'+a.prize+'金</span><br><span class="text-parch-700">'+a.enemies.map(e=>MONSTERS[e[0]].n+'×'+e[1]).join('、')+'</span></div>'+
+    '<button class="btn btn-red" onclick="arenaFight('+i+')">入场</button></div>';
+  });
+  html+='</div><div class="text-right mt-3"><button class="btn" onclick="closeModal()">离开</button></div>';
+  openModal(html);
+}
+window.openArena=openArena;
+window.arenaFight=function(i){
+  const a=ARENA[i];
+  if(G.gold<a.fee){toast('金币不足');return;}
+  gainGold(-a.fee);
+  closeModal();
+  Combat.start({monsters:a.enemies,intro:a.intro,
+    onWin:()=>{gainGold(a.prize);Game.favAdd('ash',2);Game.log('斗技场欢声雷动——你赢得了这局！','gain');}});
+};
+
+/* ---- 典籍渲染 ---- */
+function renderCodex(box){
+  const cats={};
+  CODEX.forEach(c=>{(cats[c.cat]=cats[c.cat]||[]).push(c);});
+  let html='<div class="text-xs text-parch-700 mb-2">世界典籍：随探索自动解锁。已解锁 '+CODEX.filter(function(c){return codexOpen(c.id);}).length+'/'+CODEX.length+'</div>';
+  Object.keys(cats).forEach(cat=>{
+    html+='<div class="font-bold text-blood text-sm mb-1 mt-2">◆ '+esc(cat)+'</div><div class="space-y-1">';
+    cats[cat].forEach(c=>{
+      if(codexOpen(c.id)){
+        html+='<div class="card"><b class="text-sm">'+esc(c.n)+'</b><div class="text-xs text-parch-800 mt-0.5 leading-relaxed">'+esc(c.txt)+'</div></div>';
+      }else{
+        html+='<div class="card" style="opacity:.65"><b class="text-sm">？？？</b><div class="text-xs text-parch-600 mt-0.5">解锁提示：'+esc(c.hint)+'</div></div>';
+      }
+    });
+    html+='</div>';
+  });
+  box.innerHTML=html;
+}
+
+/* ---- 秘闻低语 ---- */
+const WHISPERS=[
+ '风里传来钟声，仿佛来自天空高处。','你脚下的石子排列成了一个模糊的星图。','远处有龙吟——还是雷声？你分不清。',
+ '商队的车辙在这里转向了一片没有路的荒野。','某个位面似乎在你的影子里短暂地映出了倒影。','石头上用龙语刻着：别吵醒天空。',
+ '夜枭的叫声里有七个音阶，你只听懂了第一个。','篝火旁，一个声音哼着耐瑟时代的摇篮曲。','潮气中混着海盐的味道——离东境不远了。',
+];
 
 /* =====================================================
    屏幕流程
@@ -2878,12 +3329,13 @@ function boot(){
 function showHelp(){
   openModal('<h3 class="text-xl font-bold text-ink mb-2">玩法说明</h3>'+
   '<div class="text-sm leading-relaxed text-parch-800 space-y-2">'+
-  '<p><b>目标：</b>集齐4枚星核碎片，登上星陨坑的星核祭坛，在6种结局中做出你的抉择。</p>'+
-  '<p><b>移动：</b>WASD/方向键或点击相邻格子。走到城镇/地点图块自动触发事件，迷雾会随探索散开。</p>'+
-  '<p><b>主线：</b>新月镇找镇长 → 各阵营首领处完成阵营任务解锁位面 → 进入各≪星槎残骸/元素圣殿/静默回廊/宴会树≫夺取碎片 → 回星陨坑终局。</p>'+
+  '<p><b>目标：</b>集齐4枚星核碎片，登上星陨坑的星核祭坛，在7种结局中做出你的抉择（含耐瑟浮空城隐藏结局）。</p>'+
+  '<p><b>移动：</b>WASD/方向键或点击相邻格子。走到城镇/地点图块自动触发事件，迷雾随探索散开。</p>'+
+  '<p><b>主线：</b>新月镇找镇长 → 各阵营首领处完成阵营任务解锁位面 → 各位面夺取碎片 → 回星陨坑终局。</p>'+
+  '<p><b>耐瑟遗产线：</b>找隐士米尔顿解锁天空城传送 → 耐瑟档案馆接任务 → 集齐三卷启蒙录 → 击破浮空城主宰夺取密瑟能核 → 开启第七结局。</p>'+
+  '<p><b>自由玩法：</b>东境港/商路驿站的赏金板可无限接悬赏；灰烬要塞斗技场可反复打擂；龙墓三试、幽暗矿道、月影林地立场抉择等开放支线散布全图。</p>'+
   '<p><b>战斗：</b>DND5E规则——先攻决定顺序；每回合可移动+行动（攻击/施法/物品/躲避）。注意借机攻击与优势劣势。</p>'+
-  '<p><b>检定：</b>d20+调整值 vs DC。技能熟练、装备、灵感徽章都会影响结果。</p>'+
-  '<p><b>死亡：</b>生命归零进入死亡豁免（3胜稳定/3败死亡），死亡后可读档。</p>'+
+  '<p><b>典籍：</b>「典籍」页签随探索自动解锁世界观词条（耐瑟/位面/势力/地理/传奇）。</p>'+
   '<p><b>存档：</b>系统页手动存读档；任务推进与长休自动存档。</p>'+
   '</div><div class="text-right mt-3"><button class="btn" onclick="closeModal()">明白了</button></div>');
 }
